@@ -7,7 +7,7 @@ pub mod provider;
 pub mod providers;
 pub mod router;
 
-pub use config::{Config, ProviderConfig, ProviderKind};
+pub use config::{Config, ProviderConfig, ProviderKind, Shortcuts};
 pub use error::ProviderError;
 pub use provider::{ProviderInfo, TranslateRequest, Translation, Translator};
 pub use router::{Attempt, Router, RouterError};

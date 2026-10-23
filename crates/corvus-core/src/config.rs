@@ -14,8 +14,29 @@ pub struct Config {
     pub default_target: String,
     /// Per-provider attempt timeout before the router falls back to the next one.
     pub timeout_secs: u64,
+    /// Global shortcuts used by the desktop app.
+    pub shortcuts: Shortcuts,
     /// Fallback order, by provider id.
     pub providers: Vec<ProviderConfig>,
+}
+
+/// Key sequences such as `"Ctrl+Alt+E"`. An empty string disables that shortcut.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct Shortcuts {
+    pub show_window: String,
+    pub translate_selection: String,
+    pub replace_selection: String,
+}
+
+impl Default for Shortcuts {
+    fn default() -> Self {
+        Self {
+            show_window: "Ctrl+Alt+C".into(),
+            translate_selection: "Ctrl+Alt+E".into(),
+            replace_selection: "Ctrl+Alt+R".into(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,6 +76,7 @@ impl Default for Config {
             default_source: "auto".into(),
             default_target: "en".into(),
             timeout_secs: 15,
+            shortcuts: Shortcuts::default(),
             providers: vec![
                 ProviderConfig::new("google", ProviderKind::GoogleFree),
                 ProviderConfig {
@@ -152,6 +174,15 @@ mod tests {
         assert_eq!(back.providers.len(), 3);
         assert_eq!(back.providers[2].kind, ProviderKind::OpenaiCompatible);
         assert!(!back.providers[2].enabled);
+    }
+
+    #[test]
+    fn configs_without_shortcuts_section_get_defaults() {
+        let c: Config = toml::from_str("default_target = \"vi\"").unwrap();
+        assert_eq!(c.shortcuts, Shortcuts::default());
+        let c: Config = toml::from_str("[shortcuts]\nreplace_selection = \"\"").unwrap();
+        assert_eq!(c.shortcuts.translate_selection, "Ctrl+Alt+E");
+        assert!(c.shortcuts.replace_selection.is_empty());
     }
 
     #[test]

@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { Button, Label, TextArea, TextField } from "react-aria-components";
-import { api, asUiError, type Language, type ProviderInfo, type Translation, type UiError } from "./api";
+import {
+  api,
+  asUiError,
+  loadStoredPrefs,
+  storePrefs,
+  type Language,
+  type ProviderInfo,
+  type Translation,
+  type UiError,
+} from "./api";
 import { LanguagePicker } from "./components/LanguagePicker";
 import { ProviderSelect } from "./components/ProviderSelect";
 import { ShortcutsDialog } from "./components/ShortcutsDialog";
@@ -21,6 +31,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
+  const [ready, setReady] = useState(false);
 
   const sourceTextRef = useRef<HTMLTextAreaElement>(null);
   const sourceLangRef = useRef<HTMLInputElement>(null);
@@ -31,16 +42,32 @@ export default function App() {
   useEffect(() => {
     Promise.all([api.languages(), api.providers(), api.appInfo()])
       .then(([langs, provs, info]) => {
+        const stored = loadStoredPrefs();
+        const known = (code?: string) => (code && langs.some((l) => l.code === code) ? code : undefined);
         setLanguages(langs);
         setProviders(provs);
-        setProvider(provs[0]?.id ?? null);
-        setSource(info.default_source);
-        setTarget(info.default_target);
+        setProvider(provs.find((p) => p.id === stored.provider)?.id ?? provs[0]?.id ?? null);
+        setSource(known(stored.source) ?? info.default_source);
+        setTarget(known(stored.target) ?? info.default_target);
         setWarnings(info.warnings);
+        setReady(true);
       })
       .catch((e) => setError(asUiError(e)));
     sourceTextRef.current?.focus();
+    const unlisten = listen<string>("load-text", (e) => {
+      setText(e.payload);
+      sourceTextRef.current?.focus();
+    });
+    return () => void unlisten.then((f) => f());
   }, []);
+
+  // Share the current choice with the popup and replace-selection, and remember it.
+  useEffect(() => {
+    if (!ready) return;
+    const prefs = { source, target, provider };
+    storePrefs(prefs);
+    void api.setPrefs(prefs);
+  }, [ready, source, target, provider]);
 
   const languageName = useCallback(
     (code: string | null | undefined) =>

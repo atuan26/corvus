@@ -31,9 +31,14 @@ api_key_env = "OPENROUTER_API_KEY"
 
 ## Keyboard
 
+Global shortcuts are set in the `[shortcuts]` section of the config; an empty value disables one.
+If a key is taken by another app, Corvus shows a warning instead of failing.
+
 | Keys | Action |
 |---|---|
 | Ctrl+Alt+C | Show Corvus (global) |
+| Ctrl+Alt+E | Translate the selected text in a popup (global) |
+| Ctrl+Alt+R | Replace the selected text with its translation (global) |
 | Ctrl+Enter | Translate now |
 | Ctrl+R | Swap languages |
 | Ctrl+Shift+C | Copy translation |
@@ -42,6 +47,19 @@ api_key_env = "OPENROUTER_API_KEY"
 | Alt+S / Alt+T | Choose source / target language |
 | Alt+1 … Alt+9 | Switch provider |
 | Ctrl+/ | Show all shortcuts |
+
+In the popup: Enter copies and closes, Esc closes, Ctrl+O opens the text in the main window,
+Alt+T changes the target language.
+
+### Desktops without global hotkeys (Wayland)
+
+Bind these commands in your desktop's own shortcut settings; they act on the running instance:
+
+```sh
+corvus-app --translate-selection
+corvus-app --replace-selection
+corvus-app --hidden          # start in the tray
+```
 
 ## Development
 

@@ -27,8 +27,10 @@ export const SHORTCUTS: Shortcut[] = [
 ];
 
 export const GLOBAL_SHORTCUTS: { keys: string; label: string }[] = [
-  { keys: "Ctrl+Alt+C", label: "Show Corvus from anywhere" },
   { keys: "Alt+1 … Alt+9", label: "Use provider 1–9 for this translation" },
+  { keys: "Ctrl+Alt+C", label: "Show Corvus from anywhere" },
+  { keys: "Ctrl+Alt+E", label: "Translate selected text in any app" },
+  { keys: "Ctrl+Alt+R", label: "Replace selected text with its translation" },
 ];
 
 function eventKeys(e: KeyboardEvent): string {

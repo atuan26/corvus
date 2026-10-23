@@ -386,3 +386,73 @@ kbd {
   justify-content: flex-end;
   margin-top: 14px;
 }
+
+.popup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  outline: none;
+}
+
+.popup-bar {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.87rem;
+}
+
+.popup-from {
+  color: var(--ink-muted);
+}
+
+.popup-source {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popup-result {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+.popup-translation {
+  margin: 0;
+  font-size: 1.1rem;
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.popup-result[aria-busy="true"] .popup-translation {
+  opacity: 0.6;
+}
+
+.popup-draft {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.popup-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.popup-provider {
+  margin-right: auto;
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+}
