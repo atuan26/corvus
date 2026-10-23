@@ -16,6 +16,11 @@ pub trait SecretStore: Send + Sync {
 pub struct Keychain;
 
 impl Keychain {
+    /// Whether the keychain answers at all (e.g. a Secret Service is running on Linux).
+    pub fn probe() -> Result<(), String> {
+        Keychain.get("__corvus_probe__").map(|_| ())
+    }
+
     fn entry(provider_id: &str) -> Result<keyring::Entry, String> {
         keyring::Entry::new(SERVICE, provider_id).map_err(|e| format!("keychain unavailable: {e}"))
     }

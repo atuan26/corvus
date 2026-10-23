@@ -2,11 +2,12 @@ mod actions;
 mod commands;
 mod popup;
 mod selection;
+mod settings;
 mod shortcuts;
 mod tray;
 
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, RwLock};
 
 use corvus_core::{Config, Keychain, Router};
 use serde::{Deserialize, Serialize};
@@ -22,40 +23,57 @@ pub struct Prefs {
 }
 
 pub struct AppState {
-    pub router: Router,
-    pub config: Config,
+    /// Swapped wholesale when settings are saved; readers clone the Arc and drop the lock.
+    pub router: RwLock<Arc<Router>>,
+    pub config: RwLock<Config>,
     pub config_path: Option<PathBuf>,
-    pub warnings: Mutex<Vec<String>>,
+    /// Problem reading the config file at startup.
+    pub load_error: Option<String>,
+    pub warnings: Mutex<Warnings>,
     pub prefs: Mutex<Prefs>,
-    /// Text waiting for the popup; it is fetched on mount because a new window misses events
-    /// emitted before its listener exists.
+    /// Text for the popup; read on mount because a new window misses events emitted before its
+    /// listener exists.
     pub popup_text: Mutex<Option<String>>,
     pub popup_shown_at: Mutex<Option<std::time::Instant>>,
 }
 
+/// Shown in the main window. Kept per source so each can be refreshed independently.
+#[derive(Default)]
+pub struct Warnings {
+    pub providers: Vec<String>,
+    pub shortcuts: Vec<String>,
+}
+
+impl AppState {
+    pub fn warnings(&self) -> Vec<String> {
+        let w = self.warnings.lock().unwrap();
+        self.load_error.iter().chain(&w.providers).chain(&w.shortcuts).cloned().collect()
+    }
+
+    pub fn router(&self) -> Arc<Router> {
+        self.router.read().unwrap().clone()
+    }
+
+    pub fn config(&self) -> Config {
+        self.config.read().unwrap().clone()
+    }
+}
+
 fn load_state() -> AppState {
     let config_path = Config::default_path();
-    let mut warnings = Vec::new();
-    let config = match config_path.as_deref().map(Config::load_or_init) {
-        Some(Ok(c)) => c,
-        Some(Err(e)) => {
-            warnings.push(format!("Using defaults, config could not be read: {e}"));
-            Config::default()
-        }
-        None => Config::default(),
+    let (config, load_error) = match config_path.as_deref().map(Config::load_or_init) {
+        Some(Ok(c)) => (c, None),
+        Some(Err(e)) => (Config::default(), Some(format!("Using defaults, config could not be read: {e}"))),
+        None => (Config::default(), None),
     };
     let (router, provider_warnings) = Router::from_config(&config, &Keychain);
-    warnings.extend(provider_warnings);
-    let prefs = Prefs {
-        source: config.default_source.clone(),
-        target: config.default_target.clone(),
-        provider: None,
-    };
+    let prefs = Prefs { source: config.default_source.clone(), target: config.default_target.clone(), provider: None };
     AppState {
-        router,
-        config,
+        router: RwLock::new(Arc::new(router)),
+        config: RwLock::new(config),
         config_path,
-        warnings: Mutex::new(warnings),
+        load_error,
+        warnings: Mutex::new(Warnings { providers: provider_warnings, shortcuts: Vec::new() }),
         prefs: Mutex::new(prefs),
         popup_text: Mutex::new(None),
         popup_shown_at: Mutex::new(None),
@@ -85,13 +103,22 @@ fn handle_args(app: &tauri::AppHandle, args: &[String], first_launch: bool) {
 }
 
 pub fn run() {
+    let state = load_state();
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| handle_args(app, &args, false)))
-        .manage(load_state())
+        .manage(state)
         .manage(selection::ClipboardState::new())
+        .manage(shortcuts::Bindings::default())
         .setup(|app| {
             tray::create(app.handle())?;
-            shortcuts::register(app);
+            let shortcut_warnings = match shortcuts::init(app) {
+                Ok(()) => {
+                    let keys = app.state::<AppState>().config().shortcuts;
+                    shortcuts::apply(app.handle(), &keys)
+                }
+                Err(e) => vec![format!("Global shortcuts are unavailable: {e}")],
+            };
+            settings::set_warnings(app.handle(), None, Some(shortcut_warnings));
             let args: Vec<String> = std::env::args().collect();
             // The main window starts hidden; launches for an action or `--hidden` keep it that way.
             if !args.iter().skip(1).any(|a| a.starts_with("--")) {
@@ -125,6 +152,13 @@ pub fn run() {
             commands::popup_text,
             commands::open_in_main,
             commands::hide_popup,
+            settings::get_settings,
+            settings::save_settings,
+            settings::set_api_key,
+            settings::test_provider,
+            settings::validate_shortcut,
+            settings::pause_shortcuts,
+            settings::resume_shortcuts,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Corvus");

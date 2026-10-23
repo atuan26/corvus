@@ -37,7 +37,8 @@ pub fn replace_selection(app: &AppHandle) {
         let state = app.state::<AppState>();
         let prefs = state.prefs.lock().unwrap().clone();
         let req = TranslateRequest::new(text.clone(), prefs.source, prefs.target);
-        match state.router.translate(&req, prefs.provider.as_deref()).await {
+        let router = state.router();
+        match router.translate(&req, prefs.provider.as_deref()).await {
             Ok(t) => {
                 let app2 = app.clone();
                 let pasted = tauri::async_runtime::spawn_blocking(move || {

@@ -1,5 +1,5 @@
 use corvus_core::lang::{self, Language};
-use corvus_core::{Attempt, ProviderInfo, RouterError, TranslateRequest, Translation};
+use corvus_core::{Attempt, ProviderInfo, RouterError, Shortcuts, TranslateRequest, Translation};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 
@@ -27,12 +27,12 @@ pub async fn translate(
     request: TranslateRequest,
     provider: Option<String>,
 ) -> Result<Translation, UiError> {
-    Ok(state.router.translate(&request, provider.as_deref()).await?)
+    Ok(state.router().translate(&request, provider.as_deref()).await?)
 }
 
 #[tauri::command]
 pub fn providers(state: State<'_, AppState>) -> Vec<ProviderInfo> {
-    state.router.providers()
+    state.router().providers()
 }
 
 #[tauri::command]
@@ -45,16 +45,19 @@ pub struct AppInfo {
     default_source: String,
     default_target: String,
     config_path: Option<String>,
+    shortcuts: Shortcuts,
     warnings: Vec<String>,
 }
 
 #[tauri::command]
 pub fn app_info(state: State<'_, AppState>) -> AppInfo {
+    let config = state.config();
     AppInfo {
-        default_source: state.config.default_source.clone(),
-        default_target: state.config.default_target.clone(),
+        default_source: config.default_source,
+        default_target: config.default_target,
         config_path: state.config_path.as_ref().map(|p| p.display().to_string()),
-        warnings: state.warnings.lock().unwrap().clone(),
+        shortcuts: config.shortcuts,
+        warnings: state.warnings(),
     }
 }
 

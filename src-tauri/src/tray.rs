@@ -1,6 +1,6 @@
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Wry};
 
 use crate::AppState;
 
@@ -10,23 +10,28 @@ fn accel(keys: &str) -> Option<&str> {
     (!keys.is_empty()).then_some(keys)
 }
 
-pub fn create(app: &AppHandle) -> tauri::Result<()> {
-    let keys = app.state::<AppState>().config.shortcuts.clone();
+fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
+    let keys = app.state::<AppState>().config().shortcuts;
     let show = MenuItem::with_id(app, "show", "Show Corvus", true, accel(&keys.show_window))?;
     let translate =
         MenuItem::with_id(app, "translate", "Translate selection", true, accel(&keys.translate_selection))?;
     let replace = MenuItem::with_id(app, "replace", "Replace selection", true, accel(&keys.replace_selection))?;
+    let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
-    let menu = Menu::with_items(app, &[&show, &translate, &replace, &separator, &quit])?;
+    Menu::with_items(app, &[&show, &translate, &replace, &separator, &settings, &quit])
+}
+
+pub fn create(app: &AppHandle) -> tauri::Result<()> {
     let mut builder = TrayIconBuilder::with_id(ID)
         .tooltip("Corvus")
-        .menu(&menu)
+        .menu(&menu(app)?)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => crate::show_main_window(app),
             "translate" => crate::actions::translate_selection(app),
             "replace" => crate::actions::replace_selection(app),
+            "settings" => crate::settings::open(app),
             "quit" => app.exit(0),
             _ => {}
         })
@@ -40,4 +45,11 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
     }
     builder.build(app)?;
     Ok(())
+}
+
+/// Rebuild the menu so accelerator hints match the current shortcuts.
+pub fn refresh(app: &AppHandle) {
+    if let (Some(tray), Ok(menu)) = (app.tray_by_id(ID), menu(app)) {
+        let _ = tray.set_menu(Some(menu));
+    }
 }
