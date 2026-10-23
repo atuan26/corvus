@@ -20,7 +20,6 @@ use crate::error::AiError;
 use crate::providers::responses::ResponsesAuth;
 
 pub const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
-pub const DEFAULT_MODEL: &str = "gpt-5.5";
 /// Models newer than the client version sent are hidden by the backend.
 const CLIENT_VERSION: &str = "0.160.0";
 const ORIGINATOR: &str = "corvus";
@@ -424,11 +423,13 @@ pub struct ChatGptAuth {
     login: Login,
     tokens: tokio::sync::Mutex<Tokens>,
     store: Arc<dyn SecretStore>,
+    /// The account's best model, looked up once when no model is configured.
+    best_model: tokio::sync::Mutex<Option<String>>,
 }
 
 impl ChatGptAuth {
     pub fn new(login: Login, tokens: Tokens, store: Arc<dyn SecretStore>) -> Self {
-        Self { login, tokens: tokio::sync::Mutex::new(tokens), store }
+        Self { login, tokens: tokio::sync::Mutex::new(tokens), store, best_model: tokio::sync::Mutex::new(None) }
     }
 
     async fn refresh_locked(&self, tokens: &mut Tokens) -> Result<(), AiError> {
@@ -459,6 +460,35 @@ impl ResponsesAuth for ChatGptAuth {
             h.push(("ChatGPT-Account-ID".into(), id.clone()));
         }
         Ok(h)
+    }
+
+    /// Which models a ChatGPT plan may use varies by plan and changes over time, so "best
+    /// available" asks the backend instead of assuming a model name.
+    async fn resolve_model(&self, configured: &str) -> Result<String, AiError> {
+        if !configured.is_empty() {
+            return Ok(configured.to_string());
+        }
+        let mut cached = self.best_model.lock().await;
+        if let Some(m) = cached.as_ref() {
+            return Ok(m.clone());
+        }
+        let tokens = {
+            let mut tokens = self.tokens.lock().await;
+            if tokens.needs_refresh() {
+                self.refresh_locked(&mut tokens).await?;
+            }
+            tokens.clone()
+        };
+        let best = self
+            .login
+            .models(&tokens)
+            .await?
+            .into_iter()
+            .next()
+            .ok_or_else(|| AiError::Config("this ChatGPT account has no models available".into()))?
+            .slug;
+        *cached = Some(best.clone());
+        Ok(best)
     }
 
     async fn on_unauthorized(&self) -> Result<bool, AiError> {

@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use corvus_core::{AssistantConfig, AssistantKind, SecretStore};
 
-use crate::chatgpt::{self, ChatGptAuth, Endpoints, Login, Tokens};
+use crate::chatgpt::{ChatGptAuth, Endpoints, Login, Tokens};
 use crate::providers::{chat::ChatCompletions, claude::Claude, responses};
 use crate::types::Assistant;
 
@@ -30,7 +30,8 @@ pub fn build(cfg: &AssistantConfig, secrets: Arc<dyn SecretStore>, endpoints: &E
     Ok(match cfg.kind {
         AssistantKind::Chatgpt => {
             let tokens = Tokens::load(secrets.as_ref())?.ok_or("Not signed in to ChatGPT")?;
-            let model = non_empty(&cfg.model).unwrap_or_else(|| chatgpt::DEFAULT_MODEL.into());
+            // Empty: the account's best model, looked up on first use.
+            let model = non_empty(&cfg.model).unwrap_or_default();
             let auth = ChatGptAuth::new(Login::new(endpoints.clone()), tokens, secrets);
             Arc::new(responses::Responses::new(cfg.id.clone(), name, endpoints.backend_base.clone(), model, cfg.web_search, Box::new(auth)))
         }

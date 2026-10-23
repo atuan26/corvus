@@ -18,6 +18,13 @@ pub trait ResponsesAuth: Send + Sync {
     async fn headers(&self) -> Result<Vec<(String, String)>, AiError>;
     /// Backend-specific body changes (e.g. required fields).
     fn adjust_body(&self, _body: &mut Value) {}
+    /// The model to request. An empty `configured` value means "the backend's best".
+    async fn resolve_model(&self, configured: &str) -> Result<String, AiError> {
+        if configured.is_empty() {
+            return Err(AiError::Config("no model set".into()));
+        }
+        Ok(configured.to_string())
+    }
     /// Called on HTTP 401; return true after renewing credentials to retry once.
     async fn on_unauthorized(&self) -> Result<bool, AiError> {
         Ok(false)
@@ -67,7 +74,7 @@ impl Responses {
         }
     }
 
-    pub fn body(&self, req: &AskRequest) -> Value {
+    pub fn body(&self, req: &AskRequest, model: &str) -> Value {
         // Conversation state is resent as text each turn (`store: false` keeps nothing server-side).
         let input: Vec<Value> = req
             .messages
@@ -78,7 +85,7 @@ impl Responses {
             })
             .collect();
         let mut body = json!({
-            "model": self.model,
+            "model": model,
             "input": input,
             "stream": true,
             "store": false,
@@ -109,13 +116,15 @@ impl Assistant for Responses {
             id: self.id.clone(),
             name: self.name.clone(),
             kind: self.auth.kind().into(),
-            model: self.model.clone(),
+            // Empty means it is picked from the account's models on first use.
+            model: if self.model.is_empty() { "best available".into() } else { self.model.clone() },
             web_search: self.web_search,
         }
     }
 
     async fn ask(&self, req: &AskRequest, on_event: EventSink<'_>) -> Result<AskReply, AiError> {
-        let body = self.body(req);
+        let model = self.auth.resolve_model(&self.model).await?;
+        let body = self.body(req, &model);
         let mut retried = false;
         let resp = loop {
             let mut builder = self.client.post(format!("{}/responses", self.base_url)).json(&body);

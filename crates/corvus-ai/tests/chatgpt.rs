@@ -258,3 +258,34 @@ async fn usage_limit_shows_reset_time_and_models_are_sorted() {
         other => panic!("unexpected: {other:?}"),
     }
 }
+
+#[tokio::test]
+async fn best_available_model_comes_from_the_account() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/codex/models"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"models":[
+            {"slug":"gpt-5.5","visibility":"list","priority":13},
+            {"slug":"gpt-6.1-sol","visibility":"list","priority":1}
+        ]})))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/codex/responses"))
+        .and(body_partial_json(json!({"model":"gpt-6.1-sol"})))
+        .respond_with(sse_ok())
+        .expect(2)
+        .mount(&server)
+        .await;
+    let t: Tokens = serde_json::from_value(json!({"id_token":"a","access_token":"b","refresh_token":"c","account_id":"acct","email":null,"plan":null,"last_refresh": now()})).unwrap();
+    let auth = ChatGptAuth::new(Login::new(endpoints(&server)), t, Arc::new(MemoryStore::default()));
+    // An empty model means "best available".
+    let r = Responses::new("chatgpt".into(), "ChatGPT".into(), format!("{}/codex", server.uri()), String::new(), false, Box::new(auth));
+    assert_eq!(r.info().model, "best available");
+    let sink = |_: AskEvent| {};
+    let req = AskRequest { system: None, messages: vec![ChatMessage::user("hi")], web_search: false };
+    // Two questions, one model lookup (cached).
+    r.ask(&req, &sink).await.unwrap();
+    r.ask(&req, &sink).await.unwrap();
+}
