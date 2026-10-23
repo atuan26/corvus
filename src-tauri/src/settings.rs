@@ -5,7 +5,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use corvus_core::{
-    Config, KeySource, Keychain, ProviderConfig, Router, SecretStore, Shortcuts, TranslateRequest, Translation,
+    AssistantConfig, Config, KeySource, Keychain, ProviderConfig, Router, SecretStore, Shortcuts, TranslateRequest,
+    Translation,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -47,21 +48,35 @@ pub struct ProviderView {
 }
 
 #[derive(Serialize)]
+pub struct AssistantView {
+    #[serde(flatten)]
+    config: AssistantConfig,
+    key_source: KeySource,
+}
+
+#[derive(Serialize)]
 pub struct SettingsView {
     default_source: String,
     default_target: String,
     timeout_secs: u64,
     shortcuts: Shortcuts,
     providers: Vec<ProviderView>,
+    assistants: Vec<AssistantView>,
+    /// Where new secrets go when the keychain is down: "keychain" or "file".
+    secrets_location: &'static str,
     config_path: Option<String>,
     /// `None` when the keychain works, otherwise why it doesn't.
     keychain_error: Option<String>,
 }
 
 #[tauri::command]
-pub async fn get_settings(state: State<'_, AppState>) -> Result<SettingsView, String> {
+pub async fn get_settings(
+    state: State<'_, AppState>,
+    ask: State<'_, crate::ask::AskState>,
+) -> Result<SettingsView, String> {
     let config = state.config();
     let config_path = state.config_path.as_ref().map(|p| p.display().to_string());
+    let ask_secrets = ask.secrets.clone();
     blocking(move || {
         let keychain_error = Keychain::probe().err();
         let secrets: &dyn SecretStore = if keychain_error.is_some() { &NoKeychain } else { &Keychain };
@@ -75,7 +90,17 @@ pub async fn get_settings(state: State<'_, AppState>) -> Result<SettingsView, St
                 ProviderView { config, key_source, requires_key: p.kind.requires_key() }
             })
             .collect();
+        let assistants = config
+            .assistants
+            .iter()
+            .map(|a| AssistantView {
+                key_source: a.resolve_key(ask_secrets.as_ref()).1,
+                config: AssistantConfig { api_key: None, ..a.clone() },
+            })
+            .collect();
         SettingsView {
+            assistants,
+            secrets_location: ask_secrets.location(),
             default_source: config.default_source,
             default_target: config.default_target,
             timeout_secs: config.timeout_secs,
@@ -110,6 +135,7 @@ pub struct SettingsInput {
     timeout_secs: u64,
     shortcuts: Shortcuts,
     providers: Vec<ProviderConfig>,
+    assistants: Vec<AssistantConfig>,
 }
 
 /// Rebuild the provider chain from `config`, swap it in, and re-register shortcuts.
@@ -146,7 +172,16 @@ pub async fn save_settings(app: AppHandle, input: SettingsInput) -> Result<Vec<S
             p
         })
         .collect();
+    let assistants = input
+        .assistants
+        .into_iter()
+        .map(|mut a| {
+            a.api_key = old.assistants.iter().find(|o| o.id == a.id).and_then(|o| o.api_key.clone());
+            a
+        })
+        .collect();
     let config = Config {
+        assistants,
         default_source: input.default_source,
         default_target: input.default_target,
         timeout_secs: input.timeout_secs,

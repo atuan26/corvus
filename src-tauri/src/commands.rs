@@ -3,7 +3,8 @@ use corvus_core::{Attempt, ProviderInfo, RouterError, Shortcuts, TranslateReques
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 
-use crate::{popup, AppState, Prefs};
+use crate::popup::{self, Popup};
+use crate::{AppState, Prefs};
 
 /// Error shape the UI can render directly: a message plus per-provider details.
 #[derive(Debug, Serialize)]
@@ -73,21 +74,37 @@ pub fn set_prefs(state: State<'_, AppState>, prefs: Prefs) {
 
 /// Non-destructive, so a remounted popup (e.g. React StrictMode in dev) still gets the text.
 #[tauri::command]
-pub fn popup_text(state: State<'_, AppState>) -> Option<String> {
-    state.popup_text.lock().unwrap().clone()
+pub fn popup_text(window: tauri::Window, state: State<'_, AppState>) -> Option<String> {
+    state.popup_text.lock().unwrap().get(window.label()).cloned()
 }
 
-/// Move the popup's text into the main window for editing.
+/// Move a popup's text into the main window for editing (`view` picks Translate or Ask).
 #[tauri::command]
-pub fn open_in_main(app: AppHandle, text: String) -> Result<(), String> {
-    hide_popup(app.clone());
-    crate::show_main_window(&app);
-    app.emit_to("main", "load-text", text).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn hide_popup(app: AppHandle) {
-    if let Some(w) = app.get_webview_window(popup::LABEL) {
-        let _ = w.hide();
+pub fn open_in_main(app: AppHandle, window: tauri::Window, text: String, view: Option<String>) -> Result<(), String> {
+    if let Some(p) = Popup::from_label(window.label()) {
+        popup::hide(&app, p);
     }
+    crate::show_main_window(&app);
+    let event = if view.as_deref() == Some("ask") { "load-ask" } else { "load-text" };
+    app.emit_to("main", event, text).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn hide_popup(app: AppHandle, window: tauri::Window) {
+    if let Some(p) = Popup::from_label(window.label()) {
+        popup::hide(&app, p);
+    }
+}
+
+/// Hide the popup, let focus return to the previous app, then paste `text` over its selection.
+#[tauri::command]
+pub async fn paste_text(app: AppHandle, window: tauri::Window, text: String) -> Result<(), String> {
+    if let Some(p) = Popup::from_label(window.label()) {
+        popup::hide(&app, p);
+    }
+    tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+    let app2 = app.clone();
+    tauri::async_runtime::spawn_blocking(move || app2.state::<crate::selection::ClipboardState>().paste(&text))
+        .await
+        .map_err(|e| e.to_string())?
 }

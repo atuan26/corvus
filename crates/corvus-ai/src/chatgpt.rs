@@ -355,6 +355,17 @@ impl Login {
         Tokens::from_response(&resp.json().await?, Some(tokens))
     }
 
+    /// Return tokens that are good for a request, refreshing (and saving) them if needed.
+    pub async fn fresh(&self, tokens: Tokens, store: Arc<dyn SecretStore>) -> Result<Tokens, AiError> {
+        if !tokens.needs_refresh() {
+            return Ok(tokens);
+        }
+        let fresh = self.refresh(&tokens).await?;
+        let saved = fresh.clone();
+        let _ = tokio::task::spawn_blocking(move || saved.save(store.as_ref())).await;
+        Ok(fresh)
+    }
+
     /// Models this account may use, best first.
     pub async fn models(&self, tokens: &Tokens) -> Result<Vec<ModelEntry>, AiError> {
         let mut req = self

@@ -11,6 +11,7 @@ enum Action {
     ShowWindow,
     TranslateSelection,
     ReplaceSelection,
+    AskSelection,
 }
 
 impl Action {
@@ -19,6 +20,7 @@ impl Action {
             Action::ShowWindow => crate::show_main_window(app),
             Action::TranslateSelection => crate::actions::translate_selection(app),
             Action::ReplaceSelection => crate::actions::replace_selection(app),
+            Action::AskSelection => crate::actions::ask_selection(app),
         }
     }
 }
@@ -43,11 +45,12 @@ pub fn init(app: &App) -> tauri::Result<()> {
     app.handle().plugin(plugin)
 }
 
-fn entries(keys: &Shortcuts) -> [(&str, &String, Action); 3] {
+fn entries(keys: &Shortcuts) -> [(&str, &String, Action); 4] {
     [
         ("Show Corvus", &keys.show_window, Action::ShowWindow),
         ("Translate selection", &keys.translate_selection, Action::TranslateSelection),
         ("Replace selection", &keys.replace_selection, Action::ReplaceSelection),
+        ("Ask about selection", &keys.ask_selection, Action::AskSelection),
     ]
 }
 

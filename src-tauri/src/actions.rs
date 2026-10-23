@@ -3,6 +3,7 @@
 use corvus_core::TranslateRequest;
 use tauri::{AppHandle, Manager};
 
+use crate::popup::Popup;
 use crate::selection::ClipboardState;
 use crate::AppState;
 
@@ -21,8 +22,19 @@ pub fn translate_selection(app: &AppHandle) {
             String::new()
         });
         // An empty popup explains that nothing was selected and offers manual input.
-        if let Err(e) = crate::popup::show_text(&app, text) {
+        if let Err(e) = crate::popup::show_text(&app, Popup::Translate, text) {
             tracing::warn!("cannot show popup: {e}");
+        }
+    });
+}
+
+pub fn ask_selection(app: &AppHandle) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        // Without a selection the popup offers a free-form question instead.
+        let text = selected_text(&app).await.unwrap_or_default();
+        if let Err(e) = crate::popup::show_text(&app, Popup::Ask, text) {
+            tracing::warn!("cannot show ask popup: {e}");
         }
     });
 }
@@ -54,7 +66,7 @@ pub fn replace_selection(app: &AppHandle) {
             Err(e) => {
                 tracing::warn!("replace selection: {e}");
                 // Show what went wrong instead of failing silently.
-                let _ = crate::popup::show_text(&app, text);
+                let _ = crate::popup::show_text(&app, Popup::Translate, text);
             }
         }
     });

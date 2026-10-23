@@ -1,4 +1,5 @@
 mod actions;
+mod ask;
 mod commands;
 mod popup;
 mod selection;
@@ -33,7 +34,7 @@ pub struct AppState {
     pub prefs: Mutex<Prefs>,
     /// Text for the popup; read on mount because a new window misses events emitted before its
     /// listener exists.
-    pub popup_text: Mutex<Option<String>>,
+    pub popup_text: Mutex<std::collections::HashMap<String, String>>,
     pub popup_shown_at: Mutex<Option<std::time::Instant>>,
 }
 
@@ -75,7 +76,7 @@ fn load_state() -> AppState {
         load_error,
         warnings: Mutex::new(Warnings { providers: provider_warnings, shortcuts: Vec::new() }),
         prefs: Mutex::new(prefs),
-        popup_text: Mutex::new(None),
+        popup_text: Mutex::new(std::collections::HashMap::new()),
         popup_shown_at: Mutex::new(None),
     }
 }
@@ -95,6 +96,7 @@ fn handle_args(app: &tauri::AppHandle, args: &[String], first_launch: bool) {
     match args.iter().skip(1).map(String::as_str).find(|a| a.starts_with("--")) {
         Some("--translate-selection") => actions::translate_selection(app),
         Some("--replace-selection") => actions::replace_selection(app),
+        Some("--ask-selection") => actions::ask_selection(app),
         Some("--hidden") => {}
         Some(other) => tracing::warn!("unknown argument: {other}"),
         None if first_launch => {}
@@ -109,6 +111,8 @@ pub fn run() {
         .manage(state)
         .manage(selection::ClipboardState::new())
         .manage(shortcuts::Bindings::default())
+        .manage(ask::AskState::new())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             tray::create(app.handle())?;
             let shortcut_warnings = match shortcuts::init(app) {
@@ -136,7 +140,7 @@ pub fn run() {
                 }
             }
             tauri::WindowEvent::Focused(false)
-                if window.label() == popup::LABEL && !popup::recently_shown(window.app_handle()) =>
+                if popup::Popup::from_label(window.label()).is_some() && !popup::recently_shown(window.app_handle()) =>
             {
                 let _ = window.hide();
             }
@@ -159,6 +163,19 @@ pub fn run() {
             settings::validate_shortcut,
             settings::pause_shortcuts,
             settings::resume_shortcuts,
+            commands::paste_text,
+            ask::list_assistants,
+            ask::ask_start,
+            ask::ask_cancel,
+            ask::chatgpt_status,
+            ask::chatgpt_sign_in,
+            ask::chatgpt_device_start,
+            ask::chatgpt_device_finish,
+            ask::chatgpt_cancel_sign_in,
+            ask::chatgpt_sign_out,
+            ask::chatgpt_models,
+            ask::set_assistant_key,
+            ask::open_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Corvus");

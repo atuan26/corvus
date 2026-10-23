@@ -16,10 +16,11 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let translate =
         MenuItem::with_id(app, "translate", "Translate selection", true, accel(&keys.translate_selection))?;
     let replace = MenuItem::with_id(app, "replace", "Replace selection", true, accel(&keys.replace_selection))?;
+    let ask = MenuItem::with_id(app, "ask", "Ask AI about selection", true, accel(&keys.ask_selection))?;
     let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
-    Menu::with_items(app, &[&show, &translate, &replace, &separator, &settings, &quit])
+    Menu::with_items(app, &[&show, &translate, &replace, &ask, &separator, &settings, &quit])
 }
 
 pub fn create(app: &AppHandle) -> tauri::Result<()> {
@@ -31,6 +32,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
             "show" => crate::show_main_window(app),
             "translate" => crate::actions::translate_selection(app),
             "replace" => crate::actions::replace_selection(app),
+            "ask" => crate::actions::ask_selection(app),
             "settings" => crate::settings::open(app),
             "quit" => app.exit(0),
             _ => {}
