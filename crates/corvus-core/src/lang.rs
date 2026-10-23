@@ -1,0 +1,45 @@
+use serde::Serialize;
+
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct Language {
+    pub code: &'static str,
+    pub name: &'static str,
+}
+
+macro_rules! langs {
+    ($($code:literal => $name:literal),* $(,)?) => {
+        &[$(Language { code: $code, name: $name }),*]
+    };
+}
+
+/// Languages offered in the UI. Providers reject codes they don't support with an HTTP error,
+/// which the router turns into a fallback.
+pub const LANGUAGES: &[Language] = langs![
+    "auto" => "Detect language",
+    "af" => "Afrikaans", "sq" => "Albanian", "am" => "Amharic", "ar" => "Arabic",
+    "hy" => "Armenian", "az" => "Azerbaijani", "eu" => "Basque", "be" => "Belarusian",
+    "bn" => "Bengali", "bs" => "Bosnian", "bg" => "Bulgarian", "ca" => "Catalan",
+    "zh-CN" => "Chinese (Simplified)", "zh-TW" => "Chinese (Traditional)", "hr" => "Croatian",
+    "cs" => "Czech", "da" => "Danish", "nl" => "Dutch", "en" => "English",
+    "eo" => "Esperanto", "et" => "Estonian", "fil" => "Filipino", "fi" => "Finnish",
+    "fr" => "French", "gl" => "Galician", "ka" => "Georgian", "de" => "German",
+    "el" => "Greek", "gu" => "Gujarati", "ht" => "Haitian Creole", "ha" => "Hausa",
+    "he" => "Hebrew", "hi" => "Hindi", "hu" => "Hungarian", "is" => "Icelandic",
+    "id" => "Indonesian", "ga" => "Irish", "it" => "Italian", "ja" => "Japanese",
+    "jv" => "Javanese", "kn" => "Kannada", "kk" => "Kazakh", "km" => "Khmer",
+    "ko" => "Korean", "ku" => "Kurdish", "ky" => "Kyrgyz", "lo" => "Lao",
+    "la" => "Latin", "lv" => "Latvian", "lt" => "Lithuanian", "mk" => "Macedonian",
+    "ms" => "Malay", "ml" => "Malayalam", "mt" => "Maltese", "mr" => "Marathi",
+    "mn" => "Mongolian", "my" => "Myanmar (Burmese)", "ne" => "Nepali", "nb" => "Norwegian",
+    "fa" => "Persian", "pl" => "Polish", "pt" => "Portuguese", "pa" => "Punjabi",
+    "ro" => "Romanian", "ru" => "Russian", "sr" => "Serbian", "si" => "Sinhala",
+    "sk" => "Slovak", "sl" => "Slovenian", "so" => "Somali", "es" => "Spanish",
+    "sw" => "Swahili", "sv" => "Swedish", "tg" => "Tajik", "ta" => "Tamil",
+    "te" => "Telugu", "th" => "Thai", "tr" => "Turkish", "uk" => "Ukrainian",
+    "ur" => "Urdu", "uz" => "Uzbek", "vi" => "Vietnamese", "cy" => "Welsh",
+    "xh" => "Xhosa", "yi" => "Yiddish", "yo" => "Yoruba", "zu" => "Zulu",
+];
+
+pub fn name(code: &str) -> Option<&'static str> {
+    LANGUAGES.iter().find(|l| l.code.eq_ignore_ascii_case(code)).map(|l| l.name)
+}
