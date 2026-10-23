@@ -1,0 +1,15 @@
+[package]
+name = "corvus-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "corvus"
+path = "src/main.rs"
+
+[dependencies]
+corvus-core.workspace = true
+tokio.workspace = true
+serde_json.workspace = true
+clap = { version = "4", features = ["derive"] }
