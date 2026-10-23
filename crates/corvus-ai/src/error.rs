@@ -32,10 +32,13 @@ impl AiError {
             b.truncate(300);
             b
         });
-        let usage_limit = body.contains("usage_limit_reached") || body.contains("usage_not_included");
+        if body.contains("usage_not_included") {
+            return Self::UsageLimit("your ChatGPT plan does not include this".into());
+        }
+        let usage_limit = body.contains("usage_limit_reached");
         match status {
             401 | 403 => Self::Auth { status, message },
-            429 if usage_limit => Self::UsageLimit(message),
+            429 if usage_limit => Self::UsageLimit(usage_limit_message(&body)),
             429 => Self::RateLimited(message),
             _ => Self::Http { status, message },
         }
@@ -51,4 +54,24 @@ pub(crate) fn api_message(body: &str) -> Option<String> {
         .and_then(|m| m.as_str())
         .map(str::to_string)
         .or_else(|| v.get("detail").and_then(|d| d.as_str()).map(str::to_string))
+}
+
+/// "resets in 2 h 5 min" from the ChatGPT backend's `resets_at` (unix seconds), when present.
+fn usage_limit_message(body: &str) -> String {
+    let resets_at = serde_json::from_str::<serde_json::Value>(body)
+        .ok()
+        .and_then(|v| v["error"]["resets_at"].as_u64());
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    match resets_at {
+        Some(t) if t > now => {
+            let mins = (t - now).div_ceil(60);
+            let (h, m) = (mins / 60, mins % 60);
+            let when = if h > 0 { format!("{h} h {m} min") } else { format!("{m} min") };
+            format!("ChatGPT plan limit reached; resets in {when}")
+        }
+        _ => "ChatGPT plan limit reached; try again later".into(),
+    }
 }

@@ -1,6 +1,7 @@
 //! Streaming AI assistants for the Ask feature: Claude (Anthropic API), OpenAI-style Responses
 //! (API key or ChatGPT sign-in) and OpenAI-compatible chat completions (Ollama, Groq, ...).
 
+pub mod chatgpt;
 pub mod error;
 pub mod providers;
 pub mod sse;

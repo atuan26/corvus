@@ -18,6 +18,10 @@ pub trait ResponsesAuth: Send + Sync {
     async fn headers(&self) -> Result<Vec<(String, String)>, AiError>;
     /// Backend-specific body changes (e.g. required fields).
     fn adjust_body(&self, _body: &mut Value) {}
+    /// Called on HTTP 401; return true after renewing credentials to retry once.
+    async fn on_unauthorized(&self) -> Result<bool, AiError> {
+        Ok(false)
+    }
 }
 
 pub struct ApiKeyAuth(pub String);
@@ -111,14 +115,23 @@ impl Assistant for Responses {
     }
 
     async fn ask(&self, req: &AskRequest, on_event: EventSink<'_>) -> Result<AskReply, AiError> {
-        let mut builder = self.client.post(format!("{}/responses", self.base_url)).json(&self.body(req));
-        for (k, v) in self.auth.headers().await? {
-            builder = builder.header(k, v);
-        }
-        let resp = builder.header("Accept", "text/event-stream").send().await?;
-        if !resp.status().is_success() {
-            return Err(AiError::from_response(resp).await);
-        }
+        let body = self.body(req);
+        let mut retried = false;
+        let resp = loop {
+            let mut builder = self.client.post(format!("{}/responses", self.base_url)).json(&body);
+            for (k, v) in self.auth.headers().await? {
+                builder = builder.header(k, v);
+            }
+            let resp = builder.header("Accept", "text/event-stream").send().await?;
+            if resp.status().as_u16() == 401 && !retried && self.auth.on_unauthorized().await? {
+                retried = true;
+                continue;
+            }
+            if !resp.status().is_success() {
+                return Err(AiError::from_response(resp).await);
+            }
+            break resp;
+        };
 
         let mut text = String::new();
         let mut sources = SourceList::new();
