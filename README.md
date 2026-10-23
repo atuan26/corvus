@@ -8,6 +8,28 @@ A keyboard-first desktop translator and AI assistant, built as a modern replacem
 - **CLI** (`crates/corvus-cli`): `corvus translate -t vi "Hello"`, or pipe text via stdin.
 - **Desktop app** (`src-tauri` + `ui`): Tauri 2, React 19, React Aria Components.
 
+## Ask AI
+
+The **Ask AI** tab (Ctrl+2) is a chat with streaming answers, optional web search with source
+links, Esc to stop and Ctrl+N for a new chat. **Ctrl+Alt+A** opens a popup for the selected text in
+any app: press 1–6 for Explain, Summarize, Fix grammar, Translate & explain, Write a reply or Make
+it formal, ask a follow-up, then Enter to copy, **Ctrl+R to replace the selection**, or Ctrl+O to
+continue in the main window.
+
+Assistants are set up in Settings → AI assistants:
+
+| Kind | Sign-in | Web search |
+|---|---|---|
+| ChatGPT (beta) | **Sign in with ChatGPT** in the browser, or with a code | yes |
+| Claude | Anthropic API key (default model `claude-opus-5-5`) | yes |
+| OpenAI API | API key | yes |
+| OpenAI-compatible (Ollama, LM Studio, Groq, …) | base URL, model, optional key | no |
+
+"Sign in with ChatGPT" uses the same OAuth flow as OpenAI's Codex CLI so a ChatGPT plan can be
+used instead of an API key. It is not a published OpenAI API and may change. Tokens are stored in
+the system keychain, or without one in a private file (`~/.local/share/corvus/secrets.json`, mode
+600).
+
 ## Providers
 
 | id (default config) | Kind | Needs | Enabled by default |
@@ -54,6 +76,8 @@ If a key is taken by another app, Corvus shows a warning instead of failing.
 | Ctrl+Alt+C | Show Corvus (global) |
 | Ctrl+Alt+E | Translate the selected text in a popup (global) |
 | Ctrl+Alt+R | Replace the selected text with its translation (global) |
+| Ctrl+Alt+A | Ask AI about the selected text (global) |
+| Ctrl+1 / Ctrl+2 | Translate / Ask AI tab |
 | Ctrl+Enter | Translate now |
 | Ctrl+R | Swap languages |
 | Ctrl+Shift+C | Copy translation |
@@ -74,6 +98,7 @@ Bind these commands in your desktop's own shortcut settings; they act on the run
 ```sh
 corvus-app --translate-selection
 corvus-app --replace-selection
+corvus-app --ask-selection
 corvus-app --hidden          # start in the tray
 ```
 

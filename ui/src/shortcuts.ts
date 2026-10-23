@@ -7,7 +7,9 @@ export type ActionId =
   | "focusSourceLang"
   | "focusTargetLang"
   | "help"
-  | "settings";
+  | "settings"
+  | "tabTranslate"
+  | "tabAsk";
 
 export interface Shortcut {
   action: ActionId;
@@ -26,6 +28,8 @@ export const SHORTCUTS: Shortcut[] = [
   { action: "focusTargetLang", keys: "Alt+T", label: "Choose target language" },
   { action: "help", keys: "Ctrl+/", label: "Show keyboard shortcuts" },
   { action: "settings", keys: "Ctrl+,", label: "Open settings" },
+  { action: "tabTranslate", keys: "Ctrl+1", label: "Translate tab" },
+  { action: "tabAsk", keys: "Ctrl+2", label: "Ask AI tab (Enter sends, Esc stops, Ctrl+N new chat)" },
 ];
 
 export const PROVIDER_SHORTCUT = { keys: "Alt+1 … Alt+9", label: "Use provider 1–9 for this translation" };
@@ -35,6 +39,7 @@ export const GLOBAL_LABELS = {
   show_window: "Show Corvus from anywhere",
   translate_selection: "Translate selected text in any app",
   replace_selection: "Replace selected text with its translation",
+  ask_selection: "Ask AI about selected text (1–6 quick actions, Ctrl+R replaces)",
 } as const;
 
 function eventKeys(e: KeyboardEvent): string {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { Button, Label, TextArea, TextField } from "react-aria-components";
+import { Button, Label, Tab, TabList, TabPanel, Tabs, TextArea, TextField } from "react-aria-components";
+import AskView from "./ask/AskView";
 import {
   api,
   asUiError,
@@ -19,6 +20,9 @@ import Settings from "./Settings";
 import { matchProviderDigit, matchShortcut } from "./shortcuts";
 
 const AUTO_TRANSLATE_DELAY_MS = 600;
+
+type Tab = "translate" | "ask";
+type View = Tab | "settings";
 
 /** Keyboard jumps select the field's text so typing replaces it, as Tab does. Doing this in an
  * onFocus handler instead races with the picker opening and eats the first typed character. */
@@ -41,7 +45,10 @@ export default function App() {
   const [status, setStatus] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [ready, setReady] = useState(false);
-  const [view, setView] = useState<"translate" | "settings">("translate");
+  const [view, setView] = useState<View>("translate");
+  // Where Settings returns to, and text handed to the Ask tab from a popup.
+  const [lastTab, setLastTab] = useState<Tab>("translate");
+  const [askText, setAskText] = useState<string | undefined>(undefined);
   const [globalKeys, setGlobalKeys] = useState<ShortcutKeys | null>(null);
 
   const sourceTextRef = useRef<HTMLTextAreaElement>(null);
@@ -73,6 +80,11 @@ export default function App() {
         requestAnimationFrame(() => sourceTextRef.current?.focus());
       }),
       listen("open-settings", () => setView("settings")),
+      listen<string>("load-ask", (e) => {
+        setView("ask");
+        // A fresh string each time so the Ask tab picks it up even if unchanged.
+        setAskText(e.payload ? `${e.payload}\n\n` : " ");
+      }),
       // Saved settings change the provider list, warnings and global keys.
       listen("settings-changed", () => {
         void Promise.all([api.providers(), api.appInfo()]).then(([provs, info]) => {
@@ -87,8 +99,15 @@ export default function App() {
   }, []);
 
   const closeSettings = useCallback(() => {
-    setView("translate");
-    requestAnimationFrame(() => sourceTextRef.current?.focus());
+    setView(lastTab);
+    if (lastTab === "translate") requestAnimationFrame(() => sourceTextRef.current?.focus());
+  }, [lastTab]);
+
+  const openSettings = useCallback(() => {
+    setView((v) => {
+      if (v !== "settings") setLastTab(v);
+      return "settings";
+    });
   }, []);
 
   // Share the current choice with the popup and replace-selection, and remember it.
@@ -165,13 +184,20 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (view !== "translate") {
-        if (matchShortcut(e) === "help") {
-          e.preventDefault();
-          setHelpOpen(true);
-        }
+      const global = matchShortcut(e);
+      if (global === "help") {
+        e.preventDefault();
+        setHelpOpen(true);
         return;
       }
+      if (view === "settings") return;
+      if (global === "tabTranslate" || global === "tabAsk" || global === "settings") {
+        e.preventDefault();
+        if (global === "settings") openSettings();
+        else setView(global === "tabAsk" ? "ask" : "translate");
+        return;
+      }
+      if (view !== "translate") return;
       const digit = matchProviderDigit(e);
       if (digit !== null && providers[digit]) {
         e.preventDefault();
@@ -207,43 +233,59 @@ export default function App() {
         case "help":
           setHelpOpen(true);
           break;
-        case "settings":
-          setView("settings");
-          break;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [view, providers, translate, swap, copy]);
+  }, [view, providers, translate, swap, copy, openSettings]);
+
+  const warningList = warnings.length > 0 && (
+    <ul className="warnings" aria-label="Configuration warnings">
+      {warnings.map((w) => (
+        <li key={w}>{w}</li>
+      ))}
+    </ul>
+  );
+  const helpButton = (
+    <Button className="icon-btn" onPress={() => setHelpOpen(true)} aria-label="Keyboard shortcuts (Ctrl+/)">
+      <span aria-hidden>?</span>
+    </Button>
+  );
 
   return (
     <div className="app">
-      <header className="toolbar">
-        <h1 className="brand">Corvus</h1>
-        {view === "translate" && <ProviderSelect providers={providers} value={provider} onChange={setProvider} />}
-        <Button className="icon-btn" onPress={() => setHelpOpen(true)} aria-label="Keyboard shortcuts (Ctrl+/)">
-          <span aria-hidden>?</span>
-        </Button>
-        {view === "translate" && (
-          <Button className="icon-btn" onPress={() => setView("settings")} aria-label="Settings (Ctrl+,)">
-            <span aria-hidden>⚙</span>
-          </Button>
-        )}
-      </header>
-
-      {/* Settings shows the same messages in its own footer. */}
-      {view === "translate" && warnings.length > 0 && (
-        <ul className="warnings" aria-label="Configuration warnings">
-          {warnings.map((w) => (
-            <li key={w}>{w}</li>
-          ))}
-        </ul>
-      )}
-
       {view === "settings" ? (
-        <Settings languages={languages} onClose={closeSettings} />
-      ) : (
         <>
+          <header className="toolbar">
+            <h1 className="brand">Corvus</h1>
+            <span className="toolbar-spacer" />
+            {helpButton}
+          </header>
+          <Settings languages={languages} onClose={closeSettings} />
+        </>
+      ) : (
+        <Tabs className="tabs" selectedKey={view} onSelectionChange={(k) => setView(k as Tab)}>
+          <header className="toolbar">
+            <h1 className="brand">Corvus</h1>
+            <TabList aria-label="Mode" className="tablist">
+              <Tab id="translate" className="tab">
+                Translate <kbd aria-hidden>Ctrl+1</kbd>
+              </Tab>
+              <Tab id="ask" className="tab">
+                Ask AI <kbd aria-hidden>Ctrl+2</kbd>
+              </Tab>
+            </TabList>
+            <span className="toolbar-spacer" />
+            {view === "translate" && <ProviderSelect providers={providers} value={provider} onChange={setProvider} />}
+            {helpButton}
+            <Button className="icon-btn" onPress={openSettings} aria-label="Settings (Ctrl+,)">
+              <span aria-hidden>⚙</span>
+            </Button>
+          </header>
+          {/* Settings shows the same messages in its own footer. */}
+          {warningList}
+
+          <TabPanel id="translate" className="tabpanel">
           <div className="lang-bar">
             <LanguagePicker
               label="Source language"
@@ -308,7 +350,12 @@ export default function App() {
             )}
           </footer>
 
-        </>
+          </TabPanel>
+          {/* Kept mounted so the conversation survives switching tabs. */}
+          <TabPanel id="ask" className="tabpanel" shouldForceMount>
+            <AskView active={view === "ask"} onOpenSettings={openSettings} initialText={askText} />
+          </TabPanel>
+        </Tabs>
       )}
 
       <ShortcutsDialog isOpen={helpOpen} onOpenChange={setHelpOpen} globalKeys={globalKeys} />

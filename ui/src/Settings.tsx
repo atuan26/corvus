@@ -13,6 +13,8 @@ import {
 } from "react-aria-components";
 import {
   api,
+  type AssistantKind,
+  type AssistantView,
   type Language,
   type ProviderConfig,
   type ProviderKind,
@@ -21,6 +23,7 @@ import {
   type SettingsView,
 } from "./api";
 import { LanguagePicker } from "./components/LanguagePicker";
+import { AssistantCard } from "./components/AssistantCard";
 import { ProviderCard } from "./components/ProviderCard";
 import { ShortcutRecorder } from "./components/ShortcutRecorder";
 import { isEscapeTaken } from "./shortcuts";
@@ -62,7 +65,25 @@ const PRESETS: Preset[] = [
   { id: "custom", label: "Other OpenAI-compatible", kind: "openai-compatible", base_url: "" },
 ];
 
-type Draft = Omit<SettingsView, "config_path" | "keychain_error">;
+type Draft = Omit<SettingsView, "config_path" | "keychain_error" | "secrets_location">;
+
+interface AssistantPreset {
+  id: string;
+  label: string;
+  kind: AssistantKind;
+  name?: string;
+  base_url?: string;
+}
+
+const ASSISTANT_PRESETS: AssistantPreset[] = [
+  { id: "chatgpt", label: "ChatGPT (sign in)", kind: "chatgpt" },
+  { id: "claude", label: "Claude (API key)", kind: "anthropic" },
+  { id: "openai", label: "OpenAI (API key)", kind: "openai" },
+  { id: "ollama", label: "Ollama (local)", kind: "openai-compatible", name: "Ollama", base_url: "http://localhost:11434/v1" },
+  { id: "lmstudio", label: "LM Studio (local)", kind: "openai-compatible", name: "LM Studio", base_url: "http://localhost:1234/v1" },
+  { id: "groq", label: "Groq", kind: "openai-compatible", name: "Groq", base_url: "https://api.groq.com/openai/v1" },
+  { id: "custom-ai", label: "Other OpenAI-compatible", kind: "openai-compatible", base_url: "" },
+];
 
 function toInput(d: Draft): SettingsInput {
   const providers: ProviderConfig[] = d.providers.map(({ key_source: _k, requires_key: _r, ...p }) => ({
@@ -71,8 +92,14 @@ function toInput(d: Draft): SettingsInput {
     base_url: p.base_url?.trim() || null,
     model: p.model?.trim() || null,
   }));
+  const assistants = d.assistants.map(({ key_source: _k, ...a }) => ({
+    ...a,
+    name: a.name?.trim() || null,
+    base_url: a.base_url?.trim() || null,
+    model: a.model?.trim() || null,
+  }));
   const { default_source, default_target, timeout_secs, shortcuts } = d;
-  return { default_source, default_target, timeout_secs, shortcuts, providers };
+  return { default_source, default_target, timeout_secs, shortcuts, providers, assistants };
 }
 
 function uniqueId(base: string, taken: Set<string>) {
@@ -103,6 +130,7 @@ export default function Settings({ languages, onClose }: Props) {
       timeout_secs: s.timeout_secs,
       shortcuts: s.shortcuts,
       providers: s.providers,
+      assistants: s.assistants,
     });
   }, []);
 
@@ -205,6 +233,47 @@ export default function Settings({ languages, onClose }: Props) {
     setStatus(`Added ${preset.label} as provider ${draft.providers.length + 1}`);
   };
 
+  const setAssistant = (i: number, patch: Partial<AssistantView>) => {
+    const assistants = draft.assistants.slice();
+    assistants[i] = { ...assistants[i], ...patch };
+    if ("key_source" in patch) {
+      setSaved({
+        ...saved,
+        assistants: saved.assistants.map((a) => (a.id === assistants[i].id ? { ...a, key_source: patch.key_source! } : a)),
+      });
+    }
+    set({ assistants });
+  };
+  const moveAssistant = (i: number, delta: -1 | 1) => {
+    const assistants = draft.assistants.slice();
+    [assistants[i], assistants[i + delta]] = [assistants[i + delta], assistants[i]];
+    set({ assistants });
+    setStatus(`Moved ${assistants[i + delta].name || assistants[i + delta].id} to position ${i + delta + 1}`);
+  };
+  const removeAssistant = (i: number) => {
+    const a = draft.assistants[i];
+    set({ assistants: draft.assistants.filter((_, j) => j !== i) });
+    setStatus(`Removed ${a.name || a.id}. Discard changes to undo.`);
+  };
+  const addAssistant = (presetId: string) => {
+    const preset = ASSISTANT_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    const id = uniqueId(preset.id, new Set(draft.assistants.map((a) => a.id)));
+    const assistant: AssistantView = {
+      id,
+      kind: preset.kind,
+      enabled: true,
+      name: preset.name ?? null,
+      base_url: preset.base_url ?? null,
+      model: null,
+      api_key_env: null,
+      web_search: preset.kind !== "openai-compatible",
+      key_source: "none",
+    };
+    set({ assistants: [...draft.assistants, assistant] });
+    setStatus(`Added ${preset.label}. Save to use it.`);
+  };
+
   return (
     <div className="settings">
       <div className="settings-body">
@@ -296,6 +365,40 @@ export default function Settings({ languages, onClose }: Props) {
           </Select>
         </section>
 
+        <section className="settings-section" aria-labelledby="assistants-heading">
+          <h3 id="assistants-heading">AI assistants</h3>
+          <p className="setting-hint">Used by Ask AI and the Ask popup. Sign-in and keys apply immediately; other changes on Save.</p>
+          {draft.assistants.map((a, i) => (
+            <AssistantCard
+              key={a.id}
+              assistant={a}
+              index={i}
+              count={draft.assistants.length}
+              secretsLocation={saved.secrets_location}
+              onChange={(patch) => setAssistant(i, patch)}
+              onMove={(d) => moveAssistant(i, d)}
+              onRemove={() => removeAssistant(i)}
+              onApplied={() => setStatus("Applied")}
+            />
+          ))}
+          <Select className="add-provider" placeholder="Add an assistant…" selectedKey={null} onSelectionChange={(k) => k && addAssistant(String(k))}>
+            <Label className="sr-only">Add an assistant</Label>
+            <Button className="select-button">
+              <SelectValue />
+              <span aria-hidden>▾</span>
+            </Button>
+            <Popover className="popover">
+              <ListBox className="listbox" items={ASSISTANT_PRESETS}>
+                {(p) => (
+                  <ListBoxItem className="listbox-item" textValue={p.label}>
+                    {p.label}
+                  </ListBoxItem>
+                )}
+              </ListBox>
+            </Popover>
+          </Select>
+        </section>
+
         <section className="settings-section" aria-labelledby="shortcuts-heading">
           <h3 id="shortcuts-heading">Global shortcuts</h3>
           <p className="setting-hint">These work in any app. Clear one to turn it off.</p>
@@ -308,6 +411,11 @@ export default function Settings({ languages, onClose }: Props) {
             label="Translate selected text"
             value={draft.shortcuts.translate_selection}
             onChange={(translate_selection) => set({ shortcuts: { ...draft.shortcuts, translate_selection } })}
+          />
+          <ShortcutRecorder
+            label="Ask AI about selected text"
+            value={draft.shortcuts.ask_selection}
+            onChange={(ask_selection) => set({ shortcuts: { ...draft.shortcuts, ask_selection } })}
           />
           <ShortcutRecorder
             label="Replace selected text with its translation"

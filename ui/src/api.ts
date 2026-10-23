@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 
 export interface Language {
   code: string;
@@ -60,6 +60,85 @@ export interface ShortcutKeys {
   show_window: string;
   translate_selection: string;
   replace_selection: string;
+  ask_selection: string;
+}
+
+export type AssistantKind = "chatgpt" | "anthropic" | "openai" | "openai-compatible";
+
+export interface AssistantConfig {
+  id: string;
+  kind: AssistantKind;
+  enabled: boolean;
+  name?: string | null;
+  base_url?: string | null;
+  model?: string | null;
+  api_key_env?: string | null;
+  web_search: boolean;
+}
+
+export interface AssistantView extends AssistantConfig {
+  key_source: KeySource;
+}
+
+export interface AssistantStatus {
+  id: string;
+  name: string;
+  kind: AssistantKind;
+  model: string | null;
+  web_search: boolean;
+  /** Why it can't be used yet, e.g. "Not signed in to ChatGPT". */
+  problem: string | null;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  text: string;
+  raw?: unknown;
+  provider?: string | null;
+}
+
+export interface Source {
+  url: string;
+  title: string | null;
+}
+
+export interface AskReply {
+  message: ChatMessage;
+  sources: Source[];
+  usage: { input_tokens: number; output_tokens: number } | null;
+}
+
+export type AskEvent =
+  | { type: "text"; delta: string }
+  | { type: "searching"; query: string }
+  | { type: "source"; source: Source };
+
+export type StreamMessage =
+  | { type: "event"; event: AskEvent }
+  | { type: "done"; reply: AskReply }
+  | { type: "error"; message: string; needs_sign_in: boolean };
+
+export interface AskRequest {
+  system?: string | null;
+  messages: ChatMessage[];
+  web_search: boolean;
+}
+
+export interface ChatGptStatus {
+  signed_in: boolean;
+  email: string | null;
+  plan: string | null;
+  storage: "keychain" | "file";
+}
+
+export interface DeviceCode {
+  verification_url: string;
+  user_code: string;
+}
+
+export interface ModelEntry {
+  slug: string;
+  name: string;
 }
 
 export interface SettingsView {
@@ -68,6 +147,8 @@ export interface SettingsView {
   timeout_secs: number;
   shortcuts: ShortcutKeys;
   providers: ProviderView[];
+  assistants: AssistantView[];
+  secrets_location: "keychain" | "file";
   config_path: string | null;
   keychain_error: string | null;
 }
@@ -78,6 +159,7 @@ export interface SettingsInput {
   timeout_secs: number;
   shortcuts: ShortcutKeys;
   providers: ProviderConfig[];
+  assistants: AssistantConfig[];
 }
 
 export const api = {
@@ -89,7 +171,8 @@ export const api = {
   getPrefs: () => invoke<Prefs>("get_prefs"),
   setPrefs: (prefs: Prefs) => invoke<void>("set_prefs", { prefs }),
   popupText: () => invoke<string | null>("popup_text"),
-  openInMain: (text: string) => invoke<void>("open_in_main", { text }),
+  openInMain: (text: string, view?: "translate" | "ask") => invoke<void>("open_in_main", { text, view }),
+  pasteText: (text: string) => invoke<void>("paste_text", { text }),
   hidePopup: () => invoke<void>("hide_popup"),
   getSettings: () => invoke<SettingsView>("get_settings"),
   /** Resolves with warnings; rejects with a list of validation errors. */
@@ -100,6 +183,19 @@ export const api = {
   validateShortcut: (keys: string) => invoke<void>("validate_shortcut", { keys }),
   pauseShortcuts: () => invoke<void>("pause_shortcuts"),
   resumeShortcuts: () => invoke<void>("resume_shortcuts"),
+  listAssistants: () => invoke<AssistantStatus[]>("list_assistants"),
+  askStart: (requestId: string, assistantId: string, request: AskRequest, channel: Channel<StreamMessage>) =>
+    invoke<void>("ask_start", { requestId, assistantId, request, channel }),
+  askCancel: (requestId: string) => invoke<void>("ask_cancel", { requestId }),
+  chatgptStatus: () => invoke<ChatGptStatus>("chatgpt_status"),
+  chatgptSignIn: () => invoke<ChatGptStatus>("chatgpt_sign_in"),
+  chatgptDeviceStart: () => invoke<DeviceCode>("chatgpt_device_start"),
+  chatgptDeviceFinish: () => invoke<ChatGptStatus>("chatgpt_device_finish"),
+  chatgptCancelSignIn: () => invoke<void>("chatgpt_cancel_sign_in"),
+  chatgptSignOut: () => invoke<void>("chatgpt_sign_out"),
+  chatgptModels: () => invoke<ModelEntry[]>("chatgpt_models"),
+  setAssistantKey: (assistantId: string, key: string | null) => invoke<void>("set_assistant_key", { assistantId, key }),
+  openUrl: (url: string) => invoke<void>("open_url", { url }),
 };
 
 const PREFS_KEY = "corvus.prefs";

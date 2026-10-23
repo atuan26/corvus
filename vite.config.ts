@@ -13,7 +13,11 @@ export default defineConfig({
     emptyOutDir: true,
     target: "es2022",
     rollupOptions: {
-      input: { main: resolve(import.meta.dirname, "ui/index.html"), popup: resolve(import.meta.dirname, "ui/popup.html") },
+      input: {
+        main: resolve(import.meta.dirname, "ui/index.html"),
+        popup: resolve(import.meta.dirname, "ui/popup.html"),
+        ask: resolve(import.meta.dirname, "ui/ask.html"),
+      },
     },
   },
 });
