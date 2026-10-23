@@ -17,6 +17,7 @@ export default defineConfig({
         main: resolve(import.meta.dirname, "ui/index.html"),
         popup: resolve(import.meta.dirname, "ui/popup.html"),
         ask: resolve(import.meta.dirname, "ui/ask.html"),
+        snip: resolve(import.meta.dirname, "ui/snip.html"),
       },
     },
   },

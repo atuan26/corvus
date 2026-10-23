@@ -1096,3 +1096,93 @@ code {
 .ask-popup .composer-input {
   max-height: 90px;
 }
+
+/* Screen-area picker */
+
+.snip {
+  position: fixed;
+  inset: 0;
+  cursor: crosshair;
+  outline: none;
+  user-select: none;
+  background: #000;
+}
+
+.snip-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.snip-dim {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.35);
+}
+
+.snip-rect {
+  position: absolute;
+  border: 2px solid #e8a33d;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.45);
+}
+
+.snip-help {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgb(20 24 35 / 0.9);
+  color: #fff;
+  font-size: 0.9rem;
+  pointer-events: none;
+  max-width: 90vw;
+  text-align: center;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+
+.checkbox-group > .setting-label {
+  flex-basis: 100%;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkbox-box {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--ink-muted);
+  border-radius: 4px;
+  display: inline-grid;
+  place-items: center;
+}
+
+.checkbox[data-selected] .checkbox-box {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.checkbox[data-selected] .checkbox-box::after {
+  content: "✓";
+  color: var(--accent-ink);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.checkbox[data-focus-visible] .checkbox-box {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

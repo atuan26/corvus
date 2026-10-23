@@ -1,6 +1,8 @@
 mod actions;
 mod ask;
+mod capture;
 mod commands;
+mod ocr;
 mod popup;
 mod selection;
 mod settings;
@@ -97,6 +99,8 @@ fn handle_args(app: &tauri::AppHandle, args: &[String], first_launch: bool) {
         Some("--translate-selection") => actions::translate_selection(app),
         Some("--replace-selection") => actions::replace_selection(app),
         Some("--ask-selection") => actions::ask_selection(app),
+        Some("--ocr-translate") => ocr::start(app, ocr::Mode::Translate),
+        Some("--ocr-copy") => ocr::start(app, ocr::Mode::Copy),
         Some("--hidden") => {}
         Some(other) => tracing::warn!("unknown argument: {other}"),
         None if first_launch => {}
@@ -112,6 +116,7 @@ pub fn run() {
         .manage(selection::ClipboardState::new())
         .manage(shortcuts::Bindings::default())
         .manage(ask::AskState::new())
+        .manage(ocr::SnipState::default())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             tray::create(app.handle())?;
@@ -176,6 +181,10 @@ pub fn run() {
             ask::chatgpt_models,
             ask::set_assistant_key,
             ask::open_url,
+            ocr::snip_image,
+            ocr::snip_finish,
+            ocr::snip_cancel,
+            ocr::ocr_languages,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Corvus");

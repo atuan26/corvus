@@ -15,12 +15,14 @@ export default function Popup() {
   const [result, setResult] = useState<Translation | null>(null);
   const [error, setError] = useState<UiError | null>(null);
   const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
   const draftRef = useRef<HTMLTextAreaElement>(null);
   const targetRef = useRef<HTMLInputElement>(null);
   const seq = useRef(0);
 
   const receive = useCallback((t: string) => {
+    setNote("");
     setText(t);
     setDraft("");
     setResult(null);
@@ -39,11 +41,15 @@ export default function Popup() {
       })
       .catch((e) => setError(asUiError(e)));
     // Each time the popup is reshown the backend sends the new selection; prefs may have changed too.
-    const unlisten = listen<string>("popup-text", (e) => {
-      void api.getPrefs().then(setPrefs);
-      receive(e.payload);
-    });
-    return () => void unlisten.then((f) => f());
+    const unlisteners = [
+      listen<string>("popup-text", (e) => {
+        void api.getPrefs().then(setPrefs);
+        receive(e.payload);
+      }),
+      // e.g. "No text found in that area" from screen OCR; arrives right after popup-text.
+      listen<string>("popup-note", (e) => setNote(e.payload)),
+    ];
+    return () => unlisteners.forEach((u) => void u.then((f) => f()));
   }, [receive]);
 
   useEffect(() => {
@@ -130,7 +136,7 @@ export default function Popup() {
         </>
       ) : (
         <TextField className="popup-draft" value={draft} onChange={setDraft}>
-          <Label className="pane-label">No text selected. Type text to translate</Label>
+          <Label className="pane-label">{note || "No text selected"}. Type text to translate</Label>
           <TextArea
             ref={draftRef}
             className="pane-text"

@@ -60,6 +60,7 @@ pub struct SettingsView {
     default_target: String,
     timeout_secs: u64,
     shortcuts: Shortcuts,
+    ocr: corvus_core::ocr::OcrConfig,
     providers: Vec<ProviderView>,
     assistants: Vec<AssistantView>,
     /// Where new secrets go when the keychain is down: "keychain" or "file".
@@ -105,6 +106,7 @@ pub async fn get_settings(
             default_target: config.default_target,
             timeout_secs: config.timeout_secs,
             shortcuts: config.shortcuts,
+            ocr: config.ocr,
             providers,
             config_path,
             keychain_error,
@@ -136,6 +138,7 @@ pub struct SettingsInput {
     shortcuts: Shortcuts,
     providers: Vec<ProviderConfig>,
     assistants: Vec<AssistantConfig>,
+    ocr: corvus_core::ocr::OcrConfig,
 }
 
 /// Rebuild the provider chain from `config`, swap it in, and re-register shortcuts.
@@ -182,6 +185,7 @@ pub async fn save_settings(app: AppHandle, input: SettingsInput) -> Result<Vec<S
         .collect();
     let config = Config {
         assistants,
+        ocr: input.ocr,
         default_source: input.default_source,
         default_target: input.default_target,
         timeout_secs: input.timeout_secs,

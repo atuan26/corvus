@@ -8,6 +8,18 @@ A keyboard-first desktop translator and AI assistant, built as a modern replacem
 - **CLI** (`crates/corvus-cli`): `corvus translate -t vi "Hello"`, or pipe text via stdin.
 - **Desktop app** (`src-tauri` + `ui`): Tauri 2, React 19, React Aria Components.
 
+## Screen text (OCR)
+
+**Ctrl+Alt+O** freezes the screen under the mouse and lets you choose an area: drag over it, or
+use the keyboard (arrows move, Shift+arrows resize, Alt for 1 px steps, Ctrl+A whole screen,
+Enter confirms, Esc or right-click cancels). The text is recognized locally with Tesseract and
+translated in the popup. **Ctrl+Alt+I** does the same but copies the text and opens it in the main
+window, keeping its line breaks.
+
+Requires the `tesseract` package plus language data, e.g. `tesseract-data-vie` for Vietnamese;
+choose languages in Settings → Screen text. From the command line: `corvus ocr shot.png
+[--translate]`.
+
 ## Ask AI
 
 The **Ask AI** tab (Ctrl+2) is a chat with streaming answers, optional web search with source
@@ -77,6 +89,7 @@ If a key is taken by another app, Corvus shows a warning instead of failing.
 | Ctrl+Alt+E | Translate the selected text in a popup (global) |
 | Ctrl+Alt+R | Replace the selected text with its translation (global) |
 | Ctrl+Alt+A | Ask AI about the selected text (global) |
+| Ctrl+Alt+O / Ctrl+Alt+I | Translate / copy text in a screen area (global) |
 | Ctrl+1 / Ctrl+2 | Translate / Ask AI tab |
 | Ctrl+Enter | Translate now |
 | Ctrl+R | Swap languages |
@@ -99,6 +112,8 @@ Bind these commands in your desktop's own shortcut settings; they act on the run
 corvus-app --translate-selection
 corvus-app --replace-selection
 corvus-app --ask-selection
+corvus-app --ocr-translate
+corvus-app --ocr-copy
 corvus-app --hidden          # start in the tray
 ```
 

@@ -12,6 +12,8 @@ enum Action {
     TranslateSelection,
     ReplaceSelection,
     AskSelection,
+    OcrTranslate,
+    OcrCopy,
 }
 
 impl Action {
@@ -21,6 +23,8 @@ impl Action {
             Action::TranslateSelection => crate::actions::translate_selection(app),
             Action::ReplaceSelection => crate::actions::replace_selection(app),
             Action::AskSelection => crate::actions::ask_selection(app),
+            Action::OcrTranslate => crate::ocr::start(app, crate::ocr::Mode::Translate),
+            Action::OcrCopy => crate::ocr::start(app, crate::ocr::Mode::Copy),
         }
     }
 }
@@ -45,12 +49,14 @@ pub fn init(app: &App) -> tauri::Result<()> {
     app.handle().plugin(plugin)
 }
 
-fn entries(keys: &Shortcuts) -> [(&str, &String, Action); 4] {
+fn entries(keys: &Shortcuts) -> [(&str, &String, Action); 6] {
     [
         ("Show Corvus", &keys.show_window, Action::ShowWindow),
         ("Translate selection", &keys.translate_selection, Action::TranslateSelection),
         ("Replace selection", &keys.replace_selection, Action::ReplaceSelection),
         ("Ask about selection", &keys.ask_selection, Action::AskSelection),
+        ("Translate screen area", &keys.ocr_translate, Action::OcrTranslate),
+        ("Copy text from screen area", &keys.ocr_copy, Action::OcrCopy),
     ]
 }
 

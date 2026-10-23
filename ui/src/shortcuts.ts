@@ -40,6 +40,8 @@ export const GLOBAL_LABELS = {
   translate_selection: "Translate selected text in any app",
   replace_selection: "Replace selected text with its translation",
   ask_selection: "Ask AI about selected text (1–6 quick actions, Ctrl+R replaces)",
+  ocr_translate: "Translate text in a screen area",
+  ocr_copy: "Copy text from a screen area",
 } as const;
 
 function eventKeys(e: KeyboardEvent): string {

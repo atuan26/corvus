@@ -37,6 +37,15 @@ enum Command {
     Providers,
     /// List language codes
     Languages,
+    /// Recognize text in an image file with Tesseract
+    Ocr {
+        image: PathBuf,
+        /// Translate the recognized text (to the default or `--target` language)
+        #[arg(long)]
+        translate: bool,
+        #[arg(short, long)]
+        target: Option<String>,
+    },
     /// Manage provider API keys in the OS keychain
     Key {
         #[command(subcommand)]
@@ -86,6 +95,38 @@ async fn main() -> ExitCode {
             }
         }
         Command::Key { .. } => unreachable!("handled above"),
+        Command::Ocr { image, translate, target } => {
+            let bytes = match std::fs::read(&image) {
+                Ok(b) => b,
+                Err(e) => {
+                    eprintln!("error: {}: {e}", image.display());
+                    return ExitCode::FAILURE;
+                }
+            };
+            let text = match config.ocr.recognize(&bytes) {
+                Ok(t) => t,
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+            if !translate {
+                println!("{text}");
+                return ExitCode::SUCCESS;
+            }
+            let req = TranslateRequest::new(
+                corvus_core::ocr::join_lines(&text),
+                "auto",
+                target.unwrap_or(config.default_target.clone()),
+            );
+            match router.translate(&req, None).await {
+                Ok(t) => println!("{}", t.text),
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    return ExitCode::FAILURE;
+                }
+            }
+        }
         Command::Translate { source, target, provider, json, text } => {
             let text = if text.is_empty() {
                 if std::io::stdin().is_terminal() {

@@ -24,6 +24,12 @@ arboard = { version = "3.7.0", features = ["wayland-data-control"] }
 enigo = "0.6.1"
 tauri-plugin-opener = "2"
 corvus-ai.workspace = true
+image = { version = "0.25.10", default-features = false, features = ["png"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
+ashpd = { version = "0.13.13", default-features = false, features = ["tokio", "screenshot"] }
 gtk = "0.18"
+x11rb = "0.13"
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+xcap = "0.9.8"

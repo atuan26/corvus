@@ -21,6 +21,8 @@ pub struct Config {
     pub providers: Vec<ProviderConfig>,
     /// AI assistants for Ask, in menu order.
     pub assistants: Vec<AssistantConfig>,
+    /// Text recognition for screen-area translation.
+    pub ocr: crate::ocr::OcrConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -91,6 +93,8 @@ pub struct Shortcuts {
     pub translate_selection: String,
     pub replace_selection: String,
     pub ask_selection: String,
+    pub ocr_translate: String,
+    pub ocr_copy: String,
 }
 
 impl Default for Shortcuts {
@@ -100,6 +104,8 @@ impl Default for Shortcuts {
             translate_selection: "Ctrl+Alt+E".into(),
             replace_selection: "Ctrl+Alt+R".into(),
             ask_selection: "Ctrl+Alt+A".into(),
+            ocr_translate: "Ctrl+Alt+O".into(),
+            ocr_copy: "Ctrl+Alt+I".into(),
         }
     }
 }
@@ -159,6 +165,7 @@ impl Default for Config {
             default_target: "en".into(),
             timeout_secs: 15,
             shortcuts: Shortcuts::default(),
+            ocr: Default::default(),
             assistants: vec![
                 AssistantConfig::new("chatgpt", AssistantKind::Chatgpt),
                 AssistantConfig {

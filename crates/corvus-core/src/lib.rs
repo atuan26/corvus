@@ -3,6 +3,7 @@
 pub mod config;
 pub mod error;
 pub mod lang;
+pub mod ocr;
 pub mod provider;
 pub mod providers;
 pub mod router;

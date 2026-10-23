@@ -24,6 +24,7 @@ import {
 } from "./api";
 import { LanguagePicker } from "./components/LanguagePicker";
 import { AssistantCard } from "./components/AssistantCard";
+import { OcrSettings } from "./components/OcrSettings";
 import { ProviderCard } from "./components/ProviderCard";
 import { ShortcutRecorder } from "./components/ShortcutRecorder";
 import { isEscapeTaken } from "./shortcuts";
@@ -98,8 +99,8 @@ function toInput(d: Draft): SettingsInput {
     base_url: a.base_url?.trim() || null,
     model: a.model?.trim() || null,
   }));
-  const { default_source, default_target, timeout_secs, shortcuts } = d;
-  return { default_source, default_target, timeout_secs, shortcuts, providers, assistants };
+  const { default_source, default_target, timeout_secs, shortcuts, ocr } = d;
+  return { default_source, default_target, timeout_secs, shortcuts, ocr, providers, assistants };
 }
 
 function uniqueId(base: string, taken: Set<string>) {
@@ -129,6 +130,7 @@ export default function Settings({ languages, onClose }: Props) {
       default_target: s.default_target,
       timeout_secs: s.timeout_secs,
       shortcuts: s.shortcuts,
+      ocr: s.ocr,
       providers: s.providers,
       assistants: s.assistants,
     });
@@ -399,6 +401,11 @@ export default function Settings({ languages, onClose }: Props) {
           </Select>
         </section>
 
+        <section className="settings-section" aria-labelledby="ocr-heading">
+          <h3 id="ocr-heading">Screen text (OCR)</h3>
+          <OcrSettings value={draft.ocr} onChange={(ocr) => set({ ocr })} />
+        </section>
+
         <section className="settings-section" aria-labelledby="shortcuts-heading">
           <h3 id="shortcuts-heading">Global shortcuts</h3>
           <p className="setting-hint">These work in any app. Clear one to turn it off.</p>
@@ -416,6 +423,16 @@ export default function Settings({ languages, onClose }: Props) {
             label="Ask AI about selected text"
             value={draft.shortcuts.ask_selection}
             onChange={(ask_selection) => set({ shortcuts: { ...draft.shortcuts, ask_selection } })}
+          />
+          <ShortcutRecorder
+            label="Translate text in a screen area"
+            value={draft.shortcuts.ocr_translate}
+            onChange={(ocr_translate) => set({ shortcuts: { ...draft.shortcuts, ocr_translate } })}
+          />
+          <ShortcutRecorder
+            label="Copy text from a screen area"
+            value={draft.shortcuts.ocr_copy}
+            onChange={(ocr_copy) => set({ shortcuts: { ...draft.shortcuts, ocr_copy } })}
           />
           <ShortcutRecorder
             label="Replace selected text with its translation"

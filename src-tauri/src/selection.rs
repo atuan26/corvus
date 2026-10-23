@@ -42,6 +42,10 @@ impl ClipboardState {
         }
     }
 
+    pub fn copy(&self, text: &str) -> Result<(), String> {
+        self.with(|clip| clip.set_text(text).map_err(|e| e.to_string()))
+    }
+
     /// Blocking: replaces the focused app's selection with `text` via a simulated paste.
     pub fn paste(&self, text: &str) -> Result<(), String> {
         self.with(|clip| {

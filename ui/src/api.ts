@@ -61,6 +61,13 @@ export interface ShortcutKeys {
   translate_selection: string;
   replace_selection: string;
   ask_selection: string;
+  ocr_translate: string;
+  ocr_copy: string;
+}
+
+export interface OcrConfig {
+  languages: string[];
+  tesseract?: string | null;
 }
 
 export type AssistantKind = "chatgpt" | "anthropic" | "openai" | "openai-compatible";
@@ -146,6 +153,7 @@ export interface SettingsView {
   default_target: string;
   timeout_secs: number;
   shortcuts: ShortcutKeys;
+  ocr: OcrConfig;
   providers: ProviderView[];
   assistants: AssistantView[];
   secrets_location: "keychain" | "file";
@@ -158,6 +166,7 @@ export interface SettingsInput {
   default_target: string;
   timeout_secs: number;
   shortcuts: ShortcutKeys;
+  ocr: OcrConfig;
   providers: ProviderConfig[];
   assistants: AssistantConfig[];
 }
@@ -196,6 +205,7 @@ export const api = {
   chatgptModels: () => invoke<ModelEntry[]>("chatgpt_models"),
   setAssistantKey: (assistantId: string, key: string | null) => invoke<void>("set_assistant_key", { assistantId, key }),
   openUrl: (url: string) => invoke<void>("open_url", { url }),
+  ocrLanguages: () => invoke<string[]>("ocr_languages"),
 };
 
 const PREFS_KEY = "corvus.prefs";

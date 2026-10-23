@@ -17,10 +17,12 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         MenuItem::with_id(app, "translate", "Translate selection", true, accel(&keys.translate_selection))?;
     let replace = MenuItem::with_id(app, "replace", "Replace selection", true, accel(&keys.replace_selection))?;
     let ask = MenuItem::with_id(app, "ask", "Ask AI about selection", true, accel(&keys.ask_selection))?;
+    let ocr = MenuItem::with_id(app, "ocr", "Translate screen area", true, accel(&keys.ocr_translate))?;
+    let ocr_copy = MenuItem::with_id(app, "ocr-copy", "Copy text from screen area", true, accel(&keys.ocr_copy))?;
     let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
-    Menu::with_items(app, &[&show, &translate, &replace, &ask, &separator, &settings, &quit])
+    Menu::with_items(app, &[&show, &translate, &replace, &ask, &ocr, &ocr_copy, &separator, &settings, &quit])
 }
 
 pub fn create(app: &AppHandle) -> tauri::Result<()> {
@@ -33,6 +35,8 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
             "translate" => crate::actions::translate_selection(app),
             "replace" => crate::actions::replace_selection(app),
             "ask" => crate::actions::ask_selection(app),
+            "ocr" => crate::ocr::start(app, crate::ocr::Mode::Translate),
+            "ocr-copy" => crate::ocr::start(app, crate::ocr::Mode::Copy),
             "settings" => crate::settings::open(app),
             "quit" => app.exit(0),
             _ => {}

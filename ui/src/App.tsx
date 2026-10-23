@@ -76,10 +76,12 @@ export default function App() {
     const unlisteners = [
       listen<string>("load-text", (e) => {
         setView("translate");
+        if (e.payload) setStatus("Text recognized and copied");
         setText(e.payload);
         requestAnimationFrame(() => sourceTextRef.current?.focus());
       }),
       listen("open-settings", () => setView("settings")),
+      listen<string>("status-note", (e) => setStatus(e.payload)),
       listen<string>("load-ask", (e) => {
         setView("ask");
         // A fresh string each time so the Ask tab picks it up even if unchanged.
