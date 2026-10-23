@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { Button, Label, TextArea, TextField } from "react-aria-components";
 import { api, asUiError, type Language, type Prefs, type ProviderInfo, type Translation, type UiError } from "./api";
 import { LanguagePicker } from "./components/LanguagePicker";
+import { isEscapeTaken } from "./shortcuts";
 
 /** Compact translation of the current selection. Keyboard: Esc close, Enter copy+close, Ctrl+O open. */
 export default function Popup() {
@@ -68,7 +69,7 @@ export default function Popup() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const inField = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
-      if (e.key === "Escape" && !e.defaultPrevented) {
+      if (e.key === "Escape" && !e.defaultPrevented && !isEscapeTaken(e)) {
         void api.hidePopup();
       } else if (e.key === "Enter" && !inField && !e.shiftKey) {
         e.preventDefault();
@@ -79,6 +80,7 @@ export default function Popup() {
       } else if (e.altKey && e.code === "KeyT") {
         e.preventDefault();
         targetRef.current?.focus();
+        targetRef.current?.select();
       }
     };
     window.addEventListener("keydown", onKey);

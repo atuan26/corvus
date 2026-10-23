@@ -8,15 +8,24 @@ import {
   storePrefs,
   type Language,
   type ProviderInfo,
+  type ShortcutKeys,
   type Translation,
   type UiError,
 } from "./api";
 import { LanguagePicker } from "./components/LanguagePicker";
 import { ProviderSelect } from "./components/ProviderSelect";
 import { ShortcutsDialog } from "./components/ShortcutsDialog";
+import Settings from "./Settings";
 import { matchProviderDigit, matchShortcut } from "./shortcuts";
 
 const AUTO_TRANSLATE_DELAY_MS = 600;
+
+/** Keyboard jumps select the field's text so typing replaces it, as Tab does. Doing this in an
+ * onFocus handler instead races with the picker opening and eats the first typed character. */
+function focusAndSelect(input: HTMLInputElement | null) {
+  input?.focus();
+  input?.select();
+}
 
 export default function App() {
   const [languages, setLanguages] = useState<Language[]>([]);
@@ -32,6 +41,8 @@ export default function App() {
   const [status, setStatus] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [ready, setReady] = useState(false);
+  const [view, setView] = useState<"translate" | "settings">("translate");
+  const [globalKeys, setGlobalKeys] = useState<ShortcutKeys | null>(null);
 
   const sourceTextRef = useRef<HTMLTextAreaElement>(null);
   const sourceLangRef = useRef<HTMLInputElement>(null);
@@ -50,15 +61,34 @@ export default function App() {
         setSource(known(stored.source) ?? info.default_source);
         setTarget(known(stored.target) ?? info.default_target);
         setWarnings(info.warnings);
+        setGlobalKeys(info.shortcuts);
         setReady(true);
       })
       .catch((e) => setError(asUiError(e)));
     sourceTextRef.current?.focus();
-    const unlisten = listen<string>("load-text", (e) => {
-      setText(e.payload);
-      sourceTextRef.current?.focus();
-    });
-    return () => void unlisten.then((f) => f());
+    const unlisteners = [
+      listen<string>("load-text", (e) => {
+        setView("translate");
+        setText(e.payload);
+        requestAnimationFrame(() => sourceTextRef.current?.focus());
+      }),
+      listen("open-settings", () => setView("settings")),
+      // Saved settings change the provider list, warnings and global keys.
+      listen("settings-changed", () => {
+        void Promise.all([api.providers(), api.appInfo()]).then(([provs, info]) => {
+          setProviders(provs);
+          setProvider((current) => (provs.some((p) => p.id === current) ? current : (provs[0]?.id ?? null)));
+          setWarnings(info.warnings);
+          setGlobalKeys(info.shortcuts);
+        });
+      }),
+    ];
+    return () => unlisteners.forEach((u) => void u.then((f) => f()));
+  }, []);
+
+  const closeSettings = useCallback(() => {
+    setView("translate");
+    requestAnimationFrame(() => sourceTextRef.current?.focus());
   }, []);
 
   // Share the current choice with the popup and replace-selection, and remember it.
@@ -135,6 +165,13 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (view !== "translate") {
+        if (matchShortcut(e) === "help") {
+          e.preventDefault();
+          setHelpOpen(true);
+        }
+        return;
+      }
       const digit = matchProviderDigit(e);
       if (digit !== null && providers[digit]) {
         e.preventDefault();
@@ -162,31 +199,40 @@ export default function App() {
           sourceTextRef.current?.focus();
           break;
         case "focusSourceLang":
-          sourceLangRef.current?.focus();
+          focusAndSelect(sourceLangRef.current);
           break;
         case "focusTargetLang":
-          targetLangRef.current?.focus();
+          focusAndSelect(targetLangRef.current);
           break;
         case "help":
           setHelpOpen(true);
+          break;
+        case "settings":
+          setView("settings");
           break;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [providers, translate, swap, copy]);
+  }, [view, providers, translate, swap, copy]);
 
   return (
     <div className="app">
       <header className="toolbar">
         <h1 className="brand">Corvus</h1>
-        <ProviderSelect providers={providers} value={provider} onChange={setProvider} />
+        {view === "translate" && <ProviderSelect providers={providers} value={provider} onChange={setProvider} />}
         <Button className="icon-btn" onPress={() => setHelpOpen(true)} aria-label="Keyboard shortcuts (Ctrl+/)">
           <span aria-hidden>?</span>
         </Button>
+        {view === "translate" && (
+          <Button className="icon-btn" onPress={() => setView("settings")} aria-label="Settings (Ctrl+,)">
+            <span aria-hidden>⚙</span>
+          </Button>
+        )}
       </header>
 
-      {warnings.length > 0 && (
+      {/* Settings shows the same messages in its own footer. */}
+      {view === "translate" && warnings.length > 0 && (
         <ul className="warnings" aria-label="Configuration warnings">
           {warnings.map((w) => (
             <li key={w}>{w}</li>
@@ -194,71 +240,78 @@ export default function App() {
         </ul>
       )}
 
-      <div className="lang-bar">
-        <LanguagePicker
-          label="Source language"
-          languages={languages}
-          value={source}
-          onChange={setSource}
-          inputRef={sourceLangRef}
-        />
-        <Button className="icon-btn" onPress={swap} aria-label="Swap languages (Ctrl+R)">
-          <span aria-hidden>⇄</span>
-        </Button>
-        <LanguagePicker
-          label="Target language"
-          languages={languages.filter((l) => l.code !== "auto")}
-          value={target}
-          onChange={setTarget}
-          inputRef={targetLangRef}
-        />
-      </div>
-
-      <main className="panes">
-        <TextField className="pane" value={text} onChange={setText}>
-          <Label className="pane-label">Text to translate</Label>
-          <TextArea ref={sourceTextRef} className="pane-text" placeholder="Type or paste text…" spellCheck />
-          <div className="pane-footer">
-            <span>{text.length.toLocaleString()} characters</span>
-            <Button className="btn btn-primary" onPress={() => void translate()} isDisabled={!text.trim()}>
-              Translate <kbd aria-hidden>Ctrl+Enter</kbd>
+      {view === "settings" ? (
+        <Settings languages={languages} onClose={closeSettings} />
+      ) : (
+        <>
+          <div className="lang-bar">
+            <LanguagePicker
+              label="Source language"
+              languages={languages}
+              value={source}
+              onChange={setSource}
+              inputRef={sourceLangRef}
+            />
+            <Button className="icon-btn" onPress={swap} aria-label="Swap languages (Ctrl+R)">
+              <span aria-hidden>⇄</span>
             </Button>
+            <LanguagePicker
+              label="Target language"
+              languages={languages.filter((l) => l.code !== "auto")}
+              value={target}
+              onChange={setTarget}
+              inputRef={targetLangRef}
+            />
           </div>
-        </TextField>
 
-        <TextField className="pane pane-result" value={result?.text ?? ""} isReadOnly aria-busy={busy}>
-          <Label className="pane-label">Translation</Label>
-          <TextArea className="pane-text" placeholder={busy ? "Translating…" : "Translation appears here"} />
-          <div className="pane-footer">
-            <span />
-            <Button className="btn" onPress={() => void copy()} isDisabled={!result}>
-              Copy <kbd aria-hidden>Ctrl+Shift+C</kbd>
-            </Button>
-          </div>
-        </TextField>
-      </main>
+          <main className="panes">
+            <TextField className="pane" value={text} onChange={setText}>
+              <Label className="pane-label">Text to translate</Label>
+              <TextArea ref={sourceTextRef} className="pane-text" placeholder="Type or paste text…" spellCheck />
+              <div className="pane-footer">
+                <span>{text.length.toLocaleString()} characters</span>
+                <Button className="btn btn-primary" onPress={() => void translate()} isDisabled={!text.trim()}>
+                  Translate <kbd aria-hidden>Ctrl+Enter</kbd>
+                </Button>
+              </div>
+            </TextField>
 
-      <footer className="statusbar">
-        <p role="status" aria-live="polite" className="status">
-          {status}
-        </p>
-        {error && (
-          <div role="alert" className="error">
-            <strong>{error.message}</strong>
-            {error.attempts.length > 0 && (
-              <ul>
-                {error.attempts.map((a) => (
-                  <li key={a.provider}>
-                    {providers.find((p) => p.id === a.provider)?.name ?? a.provider}: {a.error}
-                  </li>
-                ))}
-              </ul>
+            <TextField className="pane pane-result" value={result?.text ?? ""} isReadOnly aria-busy={busy}>
+              <Label className="pane-label">Translation</Label>
+              <TextArea className="pane-text" placeholder={busy ? "Translating…" : "Translation appears here"} />
+              <div className="pane-footer">
+                <span />
+                <Button className="btn" onPress={() => void copy()} isDisabled={!result}>
+                  Copy <kbd aria-hidden>Ctrl+Shift+C</kbd>
+                </Button>
+              </div>
+            </TextField>
+          </main>
+
+          <footer className="statusbar">
+            <p role="status" aria-live="polite" className="status">
+              {status}
+            </p>
+            {error && (
+              <div role="alert" className="error">
+                <strong>{error.message}</strong>
+                {error.attempts.length > 0 && (
+                  <ul>
+                    {error.attempts.map((a) => (
+                      <li key={a.provider}>
+                        {providers.find((p) => p.id === a.provider)?.name ?? a.provider}: {a.error}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
-          </div>
-        )}
-      </footer>
+          </footer>
 
-      <ShortcutsDialog isOpen={helpOpen} onOpenChange={setHelpOpen} />
+        </>
+      )}
+
+      <ShortcutsDialog isOpen={helpOpen} onOpenChange={setHelpOpen} globalKeys={globalKeys} />
     </div>
   );
 }

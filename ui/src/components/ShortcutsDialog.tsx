@@ -1,12 +1,20 @@
 import { Dialog, Heading, Modal, ModalOverlay, Button } from "react-aria-components";
-import { GLOBAL_SHORTCUTS, SHORTCUTS } from "../shortcuts";
+import type { ShortcutKeys } from "../api";
+import { GLOBAL_LABELS, PROVIDER_SHORTCUT, SHORTCUTS } from "../shortcuts";
 
 interface Props {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  globalKeys: ShortcutKeys | null;
 }
 
-export function ShortcutsDialog({ isOpen, onOpenChange }: Props) {
+export function ShortcutsDialog({ isOpen, onOpenChange, globalKeys }: Props) {
+  const globals = [
+    PROVIDER_SHORTCUT,
+    ...(Object.keys(GLOBAL_LABELS) as (keyof ShortcutKeys)[])
+      .filter((k) => globalKeys?.[k])
+      .map((k) => ({ keys: globalKeys![k], label: GLOBAL_LABELS[k] })),
+  ];
   return (
     <ModalOverlay className="overlay" isOpen={isOpen} onOpenChange={onOpenChange} isDismissable>
       <Modal className="modal">
@@ -27,7 +35,7 @@ export function ShortcutsDialog({ isOpen, onOpenChange }: Props) {
                       </td>
                     </tr>
                   ))}
-                  {GLOBAL_SHORTCUTS.map((s) => (
+                  {globals.map((s) => (
                     <tr key={s.keys}>
                       <td>{s.label}</td>
                       <td>

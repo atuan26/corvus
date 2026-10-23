@@ -36,7 +36,7 @@ export function LanguagePicker({ label, languages, value, onChange, inputRef }: 
     >
       <Label className="sr-only">{label}</Label>
       <div className="field">
-        <Input ref={inputRef} className="field-input" onFocus={(e) => e.currentTarget.select()} />
+        <Input ref={inputRef} className="field-input" />
         <Button className="field-button" aria-label={`Show ${label.toLowerCase()} list`}>
           <span aria-hidden>▾</span>
         </Button>

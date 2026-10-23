@@ -27,6 +27,7 @@ export interface AppInfo {
   default_source: string;
   default_target: string;
   config_path: string | null;
+  shortcuts: ShortcutKeys;
   warnings: string[];
 }
 
@@ -34,6 +35,49 @@ export interface Prefs {
   source: string;
   target: string;
   provider: string | null;
+}
+
+export type ProviderKind = "google-free" | "deepl" | "openai-compatible";
+export type KeySource = "config" | "keychain" | "env" | "none";
+export type KeyStore = "keychain" | "config";
+
+export interface ProviderConfig {
+  id: string;
+  kind: ProviderKind;
+  enabled: boolean;
+  name?: string | null;
+  base_url?: string | null;
+  model?: string | null;
+  api_key_env?: string | null;
+}
+
+export interface ProviderView extends ProviderConfig {
+  key_source: KeySource;
+  requires_key: boolean;
+}
+
+export interface ShortcutKeys {
+  show_window: string;
+  translate_selection: string;
+  replace_selection: string;
+}
+
+export interface SettingsView {
+  default_source: string;
+  default_target: string;
+  timeout_secs: number;
+  shortcuts: ShortcutKeys;
+  providers: ProviderView[];
+  config_path: string | null;
+  keychain_error: string | null;
+}
+
+export interface SettingsInput {
+  default_source: string;
+  default_target: string;
+  timeout_secs: number;
+  shortcuts: ShortcutKeys;
+  providers: ProviderConfig[];
 }
 
 export const api = {
@@ -47,6 +91,15 @@ export const api = {
   popupText: () => invoke<string | null>("popup_text"),
   openInMain: (text: string) => invoke<void>("open_in_main", { text }),
   hidePopup: () => invoke<void>("hide_popup"),
+  getSettings: () => invoke<SettingsView>("get_settings"),
+  /** Resolves with warnings; rejects with a list of validation errors. */
+  saveSettings: (input: SettingsInput) => invoke<string[]>("save_settings", { input }),
+  setApiKey: (providerId: string, key: string | null, store: KeyStore) =>
+    invoke<KeySource>("set_api_key", { providerId, key, store }),
+  testProvider: (provider: ProviderConfig) => invoke<Translation>("test_provider", { provider }),
+  validateShortcut: (keys: string) => invoke<void>("validate_shortcut", { keys }),
+  pauseShortcuts: () => invoke<void>("pause_shortcuts"),
+  resumeShortcuts: () => invoke<void>("resume_shortcuts"),
 };
 
 const PREFS_KEY = "corvus.prefs";

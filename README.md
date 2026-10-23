@@ -16,6 +16,10 @@ A keyboard-first desktop translator and AI assistant, built as a modern replacem
 | `deepl` | `deepl` | API key (keychain or `DEEPL_API_KEY`) | no |
 | `ollama` | `openai-compatible` | a running Ollama, or any OpenAI-compatible `base_url` + `model` | no |
 
+Everything below can be changed in **Settings** (Ctrl+, or the ⚙ button): default languages,
+timeout, providers (add, reorder, enable, test), API keys and global shortcuts (press the new
+keys to record them). Changes apply immediately, without a restart.
+
 API keys are stored in the OS keychain (Secret Service / KWallet / GNOME Keyring, Windows
 Credential Manager, macOS Keychain) under service `corvus`, account = provider id:
 
@@ -58,6 +62,7 @@ If a key is taken by another app, Corvus shows a warning instead of failing.
 | Alt+S / Alt+T | Choose source / target language |
 | Alt+1 … Alt+9 | Switch provider |
 | Ctrl+/ | Show all shortcuts |
+| Ctrl+, | Settings (Ctrl+S saves, Esc closes) |
 
 In the popup: Enter copies and closes, Esc closes, Ctrl+O opens the text in the main window,
 Alt+T changes the target language.
