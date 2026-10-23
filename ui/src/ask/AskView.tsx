@@ -12,7 +12,9 @@ import {
   TextArea,
   TextField,
 } from "react-aria-components";
+import { ArrowUp, Globe, ScanText, Square, SquarePen } from "lucide-react";
 import { api, type AssistantStatus } from "../api";
+import { IconButton } from "../components/IconButton";
 import { ChatGptSignIn } from "./ChatGptSignIn";
 import { TurnView } from "./Transcript";
 import { useAsk } from "./useAsk";
@@ -144,18 +146,20 @@ export default function AskView({ active, onOpenSettings, initialText }: Props) 
         </Select>
         <Switch className="switch" isSelected={webSearch && !!current?.web_search} isDisabled={!current?.web_search} onChange={setWebSearch}>
           <span className="switch-track" aria-hidden />
-          Search the web
+          <Globe size={15} aria-hidden /> Search the web
         </Switch>
-        <Button
-          className="btn"
+        <span className="toolbar-spacer" />
+        <IconButton
+          showLabel
+          label="New chat"
+          shortcut="Ctrl+N"
+          icon={<SquarePen />}
+          isDisabled={turns.length === 0}
           onPress={() => {
             reset();
             inputRef.current?.focus();
           }}
-          isDisabled={turns.length === 0}
-        >
-          New chat <kbd aria-hidden>Ctrl+N</kbd>
-        </Button>
+        />
       </div>
 
       {current?.problem && (
@@ -184,7 +188,7 @@ export default function AskView({ active, onOpenSettings, initialText }: Props) 
       <section className="transcript" aria-label="Conversation">
         {turns.length === 0 && ready && (
           <p className="setting-hint ask-empty">
-            Ask anything. Enter sends, Shift+Enter adds a line, Esc stops an answer, Ctrl+N starts over.
+            Ask anything, or read a question from the screen. Enter sends, Shift+Enter adds a line, Esc stops an answer.
           </p>
         )}
         {turns.map((t, i) => (
@@ -209,13 +213,19 @@ export default function AskView({ active, onOpenSettings, initialText }: Props) 
             }}
           />
         </TextField>
+        <IconButton
+          label="Read text from screen"
+          icon={<ScanText />}
+          isDisabled={!ready}
+          onPress={() => void api.ocrStart("ask")}
+        />
         {busy ? (
           <Button className="btn" onPress={stop}>
-            Stop <kbd aria-hidden>Esc</kbd>
+            <Square size={14} aria-hidden /> Stop <kbd aria-hidden>Esc</kbd>
           </Button>
         ) : (
           <Button className="btn btn-primary" onPress={submit} isDisabled={!draft.trim() || !ready}>
-            Send <kbd aria-hidden>Enter</kbd>
+            <ArrowUp size={16} aria-hidden /> Send <kbd aria-hidden>Enter</kbd>
           </Button>
         )}
       </div>

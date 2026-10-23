@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { Button, Label, Tab, TabList, TabPanel, Tabs, TextArea, TextField } from "react-aria-components";
+import {
+  Button,
+  Label,
+  SelectionIndicator,
+  Tab,
+  TabList,
+  TabPanel,
+  Tabs,
+  TextArea,
+  TextField,
+} from "react-aria-components";
+import { ArrowLeftRight, Check, Copy, Keyboard, Languages, MessageSquareText, ScanText, Settings2, X } from "lucide-react";
+import { IconButton } from "./components/IconButton";
+import { Logo } from "./components/Logo";
 import AskView from "./ask/AskView";
 import {
   api,
@@ -42,13 +55,25 @@ export default function App() {
   const [result, setResult] = useState<Translation | null>(null);
   const [error, setError] = useState<UiError | null>(null);
   const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState("");
+  const [status, setStatusText] = useState("");
+  // Quiet messages are for screen readers only, when the screen already shows the same thing.
+  const [statusQuiet, setStatusQuiet] = useState(false);
+  const setStatus = useCallback((text: string) => {
+    setStatusQuiet(false);
+    setStatusText(text);
+  }, []);
+  const announce = useCallback((text: string) => {
+    setStatusQuiet(true);
+    setStatusText(text);
+  }, []);
   const [helpOpen, setHelpOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<View>("translate");
   // Where Settings returns to, and text handed to the Ask tab from a popup.
   const [lastTab, setLastTab] = useState<Tab>("translate");
   const [askText, setAskText] = useState<string | undefined>(undefined);
+  const [copied, setCopied] = useState(false);
+  const resultRef = useRef<HTMLTextAreaElement>(null);
   const [globalKeys, setGlobalKeys] = useState<ShortcutKeys | null>(null);
 
   const sourceTextRef = useRef<HTMLTextAreaElement>(null);
@@ -120,6 +145,12 @@ export default function App() {
     void api.setPrefs(prefs);
   }, [ready, source, target, provider]);
 
+  // A new translation fades in, so the change is noticeable without moving anything.
+  useEffect(() => {
+    if (!result?.text || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    resultRef.current?.animate([{ opacity: 0.25 }, { opacity: 1 }], { duration: 220, easing: "ease-out" });
+  }, [result?.text]);
+
   const languageName = useCallback(
     (code: string | null | undefined) =>
       languages.find((l) => l.code.toLowerCase() === code?.toLowerCase())?.name ?? code ?? "",
@@ -145,7 +176,7 @@ export default function App() {
         const by = providers.find((p) => p.id === t.provider)?.name ?? t.provider;
         const from = source === "auto" && t.detected_source ? `from ${languageName(t.detected_source)} ` : "";
         const fellBack = (providerOverride ?? provider) !== t.provider ? " (fallback)" : "";
-        setStatus(`Translated ${from}by ${by}${fellBack}`);
+        announce(`Translated ${from}by ${by}${fellBack}`);
       } catch (e) {
         if (seq !== requestSeq.current) return;
         setError(asUiError(e));
@@ -179,6 +210,8 @@ export default function App() {
     try {
       await navigator.clipboard.writeText(result.text);
       setStatus("Translation copied");
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
     } catch {
       setStatus("Could not copy to clipboard");
     }
@@ -249,17 +282,18 @@ export default function App() {
     </ul>
   );
   const helpButton = (
-    <Button className="icon-btn" onPress={() => setHelpOpen(true)} aria-label="Keyboard shortcuts (Ctrl+/)">
-      <span aria-hidden>?</span>
-    </Button>
+    <IconButton label="Keyboard shortcuts" shortcut="Ctrl+/" icon={<Keyboard />} onPress={() => setHelpOpen(true)} />
   );
+  const providerName = providers.find((p) => p.id === result?.provider)?.name;
 
   return (
     <div className="app">
       {view === "settings" ? (
         <>
           <header className="toolbar">
-            <h1 className="brand">Corvus</h1>
+            <h1 className="brand">
+              <Logo />
+            </h1>
             <span className="toolbar-spacer" />
             {helpButton}
           </header>
@@ -268,90 +302,122 @@ export default function App() {
       ) : (
         <Tabs className="tabs" selectedKey={view} onSelectionChange={(k) => setView(k as Tab)}>
           <header className="toolbar">
-            <h1 className="brand">Corvus</h1>
+            <h1 className="brand">
+              <Logo />
+            </h1>
             <TabList aria-label="Mode" className="tablist">
               <Tab id="translate" className="tab">
-                Translate <kbd aria-hidden>Ctrl+1</kbd>
+                <SelectionIndicator className="tab-indicator" />
+                <span className="tab-label">
+                  <Languages aria-hidden /> Translate
+                </span>
+                <kbd aria-hidden>Ctrl+1</kbd>
               </Tab>
               <Tab id="ask" className="tab">
-                Ask AI <kbd aria-hidden>Ctrl+2</kbd>
+                <SelectionIndicator className="tab-indicator" />
+                <span className="tab-label">
+                  <MessageSquareText aria-hidden /> Ask AI
+                </span>
+                <kbd aria-hidden>Ctrl+2</kbd>
               </Tab>
             </TabList>
             <span className="toolbar-spacer" />
             {view === "translate" && <ProviderSelect providers={providers} value={provider} onChange={setProvider} />}
             {helpButton}
-            <Button className="icon-btn" onPress={openSettings} aria-label="Settings (Ctrl+,)">
-              <span aria-hidden>⚙</span>
-            </Button>
+            <IconButton label="Settings" shortcut="Ctrl+," icon={<Settings2 />} onPress={openSettings} />
           </header>
           {/* Settings shows the same messages in its own footer. */}
           {warningList}
 
           <TabPanel id="translate" className="tabpanel">
-          <div className="lang-bar">
-            <LanguagePicker
-              label="Source language"
-              languages={languages}
-              value={source}
-              onChange={setSource}
-              inputRef={sourceLangRef}
-            />
-            <Button className="icon-btn" onPress={swap} aria-label="Swap languages (Ctrl+R)">
-              <span aria-hidden>⇄</span>
-            </Button>
-            <LanguagePicker
-              label="Target language"
-              languages={languages.filter((l) => l.code !== "auto")}
-              value={target}
-              onChange={setTarget}
-              inputRef={targetLangRef}
-            />
-          </div>
+            <div className="lang-bar">
+              <LanguagePicker
+                label="Source language"
+                languages={languages}
+                value={source}
+                onChange={setSource}
+                inputRef={sourceLangRef}
+              />
+              <IconButton label="Swap languages" shortcut="Ctrl+R" icon={<ArrowLeftRight />} onPress={swap} />
+              <LanguagePicker
+                label="Target language"
+                languages={languages.filter((l) => l.code !== "auto")}
+                value={target}
+                onChange={setTarget}
+                inputRef={targetLangRef}
+              />
+            </div>
 
-          <main className="panes">
-            <TextField className="pane" value={text} onChange={setText}>
-              <Label className="pane-label">Text to translate</Label>
-              <TextArea ref={sourceTextRef} className="pane-text" placeholder="Type or paste text…" spellCheck />
-              <div className="pane-footer">
-                <span>{text.length.toLocaleString()} characters</span>
-                <Button className="btn btn-primary" onPress={() => void translate()} isDisabled={!text.trim()}>
-                  Translate <kbd aria-hidden>Ctrl+Enter</kbd>
-                </Button>
-              </div>
-            </TextField>
+            <main className="panes">
+              <TextField className="pane" value={text} onChange={setText}>
+                <Label className="pane-label">Text to translate</Label>
+                <TextArea ref={sourceTextRef} className="pane-text" placeholder="Type, paste, or read text from the screen…" spellCheck />
+                <div className="pane-footer">
+                  <div className="pane-footer-start">
+                    <span>{text.length.toLocaleString()} characters</span>
+                  </div>
+                  <div className="pane-footer-end">
+                    <IconButton
+                      className="quiet"
+                      label="Read text from screen"
+                      icon={<ScanText />}
+                      onPress={() => void api.ocrStart("translate")}
+                    />
+                    <IconButton
+                      className="quiet"
+                      label="Clear"
+                      shortcut="Ctrl+Shift+X"
+                      icon={<X />}
+                      isDisabled={!text}
+                      onPress={() => {
+                        setText("");
+                        sourceTextRef.current?.focus();
+                      }}
+                    />
+                    <Button className="btn btn-primary" onPress={() => void translate()} isDisabled={!text.trim()}>
+                      Translate <kbd aria-hidden>Ctrl+Enter</kbd>
+                    </Button>
+                  </div>
+                </div>
+              </TextField>
 
-            <TextField className="pane pane-result" value={result?.text ?? ""} isReadOnly aria-busy={busy}>
-              <Label className="pane-label">Translation</Label>
-              <TextArea className="pane-text" placeholder={busy ? "Translating…" : "Translation appears here"} />
-              <div className="pane-footer">
-                <span />
-                <Button className="btn" onPress={() => void copy()} isDisabled={!result}>
-                  Copy <kbd aria-hidden>Ctrl+Shift+C</kbd>
-                </Button>
-              </div>
-            </TextField>
-          </main>
+              <TextField className="pane pane-result" value={result?.text ?? ""} isReadOnly aria-busy={busy}>
+                <Label className="pane-label">Translation</Label>
+                <TextArea ref={resultRef} className="pane-text" placeholder={busy ? "Translating…" : "The translation appears here"} />
+                <div className="pane-footer">
+                  <div className="pane-footer-start">
+                    {result && source === "auto" && result.detected_source && <span className="chip">From {languageName(result.detected_source)}</span>}
+                    {providerName && <span>{providerName}</span>}
+                  </div>
+                  <div className="pane-footer-end">
+                    <Button className={`btn ${copied ? "copied" : ""}`} onPress={() => void copy()} isDisabled={!result}>
+                      {copied ? <Check size={16} aria-hidden /> : <Copy size={16} aria-hidden />}
+                      {copied ? "Copied" : "Copy"} <kbd aria-hidden>Ctrl+Shift+C</kbd>
+                    </Button>
+                  </div>
+                </div>
+              </TextField>
+            </main>
 
-          <footer className="statusbar">
-            <p role="status" aria-live="polite" className="status">
-              {status}
-            </p>
-            {error && (
-              <div role="alert" className="error">
-                <strong>{error.message}</strong>
-                {error.attempts.length > 0 && (
-                  <ul>
-                    {error.attempts.map((a) => (
-                      <li key={a.provider}>
-                        {providers.find((p) => p.id === a.provider)?.name ?? a.provider}: {a.error}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </footer>
-
+            <footer className="statusbar">
+              <p role="status" aria-live="polite" className={statusQuiet ? "status sr-only" : "status"}>
+                {status}
+              </p>
+              {error && (
+                <div role="alert" className="error">
+                  <strong>{error.message}</strong>
+                  {error.attempts.length > 0 && (
+                    <ul>
+                      {error.attempts.map((a) => (
+                        <li key={a.provider}>
+                          {providers.find((p) => p.id === a.provider)?.name ?? a.provider}: {a.error}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </footer>
           </TabPanel>
           {/* Kept mounted so the conversation survives switching tabs. */}
           <TabPanel id="ask" className="tabpanel" shouldForceMount>

@@ -3,7 +3,7 @@ import { Button, Input, Label, Switch, TextField } from "react-aria-components";
 import { api, type KeySource, type ProviderView } from "../api";
 
 const KIND_LABEL: Record<ProviderView["kind"], string> = {
-  "google-free": "Google (free, no key)",
+  "google-free": "Google (no key needed)",
   deepl: "DeepL API",
   "openai-compatible": "OpenAI-compatible AI",
 };

@@ -1,7 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import {
   Button,
   Group,
+  SelectionIndicator,
+  Tab,
+  TabList,
+  TabPanel,
+  Tabs,
   Input,
   Label,
   ListBox,
@@ -28,6 +34,17 @@ import { OcrSettings } from "./components/OcrSettings";
 import { ProviderCard } from "./components/ProviderCard";
 import { ShortcutRecorder } from "./components/ShortcutRecorder";
 import { isEscapeTaken } from "./shortcuts";
+import { Bot, Info, Keyboard, Languages, ScanText, SlidersHorizontal } from "lucide-react";
+
+const SECTIONS = [
+  { id: "general", label: "General", Icon: SlidersHorizontal },
+  { id: "translation", label: "Translation", Icon: Languages },
+  { id: "assistants", label: "AI assistants", Icon: Bot },
+  { id: "ocr", label: "Screen text", Icon: ScanText },
+  { id: "shortcuts", label: "Shortcuts", Icon: Keyboard },
+  { id: "about", label: "About", Icon: Info },
+];
+
 
 interface Preset {
   id: string;
@@ -38,7 +55,7 @@ interface Preset {
 }
 
 const PRESETS: Preset[] = [
-  { id: "google", label: "Google (free)", kind: "google-free" },
+  { id: "google", label: "Google", kind: "google-free" },
   { id: "deepl", label: "DeepL", kind: "deepl" },
   { id: "openai", label: "OpenAI", kind: "openai-compatible", name: "OpenAI", base_url: "https://api.openai.com/v1" },
   {
@@ -120,7 +137,9 @@ export default function Settings({ languages, onClose }: Props) {
   const [status, setStatus] = useState("");
   const [saving, setSaving] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
-  const headingRef = useRef<HTMLHeadingElement>(null);
+  const [section, setSection] = useState("general");
+  const [version, setVersion] = useState("");
+  useEffect(() => void getVersion().then(setVersion).catch(() => {}), []);
 
   const load = useCallback(async () => {
     const s = await api.getSettings();
@@ -137,8 +156,10 @@ export default function Settings({ languages, onClose }: Props) {
   }, []);
 
   useEffect(() => {
-    load().catch((e) => setErrors([String(e)]));
-    headingRef.current?.focus();
+    load()
+      // Start on the section list (rendered once loaded) so arrow keys move between sections.
+      .then(() => requestAnimationFrame(() => document.querySelector<HTMLElement>(".settings-nav [data-selected]")?.focus()))
+      .catch((e) => setErrors([String(e)]));
   }, [load]);
 
   const dirty = useMemo(() => {
@@ -278,13 +299,19 @@ export default function Settings({ languages, onClose }: Props) {
 
   return (
     <div className="settings">
-      <div className="settings-body">
-        <h2 ref={headingRef} tabIndex={-1} className="settings-title">
-          Settings
-        </h2>
-
-        <section className="settings-section" aria-labelledby="general-heading">
-          <h3 id="general-heading">Translation</h3>
+      <Tabs orientation="vertical" className="settings-tabs" selectedKey={section} onSelectionChange={(k) => setSection(String(k))}>
+        <TabList aria-label="Settings sections" className="settings-nav">
+          {SECTIONS.map(({ id, label, Icon }) => (
+            <Tab key={id} id={id} className="settings-nav-item">
+              <SelectionIndicator className="nav-indicator" />
+              <span className="tab-label">
+                <Icon aria-hidden /> {label}
+              </span>
+            </Tab>
+          ))}
+        </TabList>
+        <TabPanel id="general" className="settings-panel">
+          <h2 className="settings-title">General</h2>
           <div className="settings-grid">
             <div className="setting-row">
               <span className="setting-label">Default source language</span>
@@ -323,10 +350,9 @@ export default function Settings({ languages, onClose }: Props) {
               </Group>
             </NumberField>
           </div>
-        </section>
-
-        <section className="settings-section" aria-labelledby="providers-heading">
-          <h3 id="providers-heading">Providers</h3>
+        </TabPanel>
+        <TabPanel id="translation" className="settings-panel">
+          <h2 className="settings-title">Translation services</h2>
           <p className="setting-hint">
             Tried from top to bottom. If one fails or is too slow, the next one is used.
           </p>
@@ -365,10 +391,9 @@ export default function Settings({ languages, onClose }: Props) {
               </ListBox>
             </Popover>
           </Select>
-        </section>
-
-        <section className="settings-section" aria-labelledby="assistants-heading">
-          <h3 id="assistants-heading">AI assistants</h3>
+        </TabPanel>
+        <TabPanel id="assistants" className="settings-panel">
+          <h2 className="settings-title">AI assistants</h2>
           <p className="setting-hint">Used by Ask AI and the Ask popup. Sign-in and keys apply immediately; other changes on Save.</p>
           {draft.assistants.map((a, i) => (
             <AssistantCard
@@ -399,15 +424,13 @@ export default function Settings({ languages, onClose }: Props) {
               </ListBox>
             </Popover>
           </Select>
-        </section>
-
-        <section className="settings-section" aria-labelledby="ocr-heading">
-          <h3 id="ocr-heading">Screen text (OCR)</h3>
+        </TabPanel>
+        <TabPanel id="ocr" className="settings-panel">
+          <h2 className="settings-title">Screen text</h2>
           <OcrSettings value={draft.ocr} onChange={(ocr) => set({ ocr })} />
-        </section>
-
-        <section className="settings-section" aria-labelledby="shortcuts-heading">
-          <h3 id="shortcuts-heading">Global shortcuts</h3>
+        </TabPanel>
+        <TabPanel id="shortcuts" className="settings-panel">
+          <h2 className="settings-title">Global shortcuts</h2>
           <p className="setting-hint">These work in any app. Clear one to turn it off.</p>
           <ShortcutRecorder
             label="Show Corvus"
@@ -439,14 +462,20 @@ export default function Settings({ languages, onClose }: Props) {
             value={draft.shortcuts.replace_selection}
             onChange={(replace_selection) => set({ shortcuts: { ...draft.shortcuts, replace_selection } })}
           />
-        </section>
-
+        </TabPanel>
+        <TabPanel id="about" className="settings-panel">
+          <h2 className="settings-title">About</h2>
+          <p>
+            <strong>Corvus</strong> {version}. A keyboard-first translator and AI assistant.
+          </p>
         {saved.config_path && (
           <p className="setting-hint">
             Settings file: <code>{saved.config_path}</code>
           </p>
         )}
-      </div>
+          <p className="setting-hint">Settings are saved as plain text you can edit by hand; restart Corvus after editing the file directly.</p>
+        </TabPanel>
+      </Tabs>
 
       <footer className="settings-footer">
         <div className="settings-messages">

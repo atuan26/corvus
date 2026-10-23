@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Button, Label, TextArea, TextField } from "react-aria-components";
 import { api, asUiError, type Language, type Prefs, type ProviderInfo, type Translation, type UiError } from "./api";
+import { Copy, PanelTopOpen } from "lucide-react";
 import { LanguagePicker } from "./components/LanguagePicker";
+import { LogoMark } from "./components/Logo";
 import { isEscapeTaken } from "./shortcuts";
 
 /** Compact translation of the current selection. Keyboard: Esc close, Enter copy+close, Ctrl+O open. */
@@ -101,7 +103,9 @@ export default function Popup() {
   return (
     <div ref={rootRef} className="popup" tabIndex={-1} role="dialog" aria-label="Translation">
       <div className="popup-bar">
-        <span className="popup-from">{from ? languageName(from) : "Auto"} →</span>
+        <span className="popup-from">
+          <LogoMark size={18} /> {from ? languageName(from) : "Auto"} →
+        </span>
         {prefs && (
           <LanguagePicker
             label="Target language"
@@ -154,10 +158,10 @@ export default function Popup() {
       <div className="popup-footer">
         <span className="popup-provider">{providerName}</span>
         <Button className="btn" onPress={() => void api.openInMain(text || draft)}>
-          Open <kbd aria-hidden>Ctrl+O</kbd>
+          <PanelTopOpen size={16} aria-hidden /> Open <kbd aria-hidden>Ctrl+O</kbd>
         </Button>
         <Button className="btn btn-primary" onPress={() => void copyAndClose()} isDisabled={!result}>
-          Copy <kbd aria-hidden>Enter</kbd>
+          <Copy size={16} aria-hidden /> Copy <kbd aria-hidden>Enter</kbd>
         </Button>
       </div>
     </div>

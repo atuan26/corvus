@@ -206,6 +206,8 @@ export const api = {
   setAssistantKey: (assistantId: string, key: string | null) => invoke<void>("set_assistant_key", { assistantId, key }),
   openUrl: (url: string) => invoke<void>("open_url", { url }),
   ocrLanguages: () => invoke<string[]>("ocr_languages"),
+  /** Pick a screen area; its text goes into the Translate or Ask input. */
+  ocrStart: (tab: "translate" | "ask") => invoke<void>("ocr_start", { tab }),
 };
 
 const PREFS_KEY = "corvus.prefs";

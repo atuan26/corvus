@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Button, Label, TextArea, TextField } from "react-aria-components";
+import { Copy, PanelTopOpen, Replace, Square } from "lucide-react";
 import { api, type AssistantStatus } from "../api";
+import { LogoMark } from "../components/Logo";
 import { isEscapeTaken } from "../shortcuts";
 import { TurnView } from "./Transcript";
 import { useAsk } from "./useAsk";
@@ -108,7 +110,9 @@ export default function AskPopup() {
   return (
     <div ref={rootRef} className="popup ask-popup" tabIndex={-1} role="dialog" aria-label="Ask about the selection">
       <div className="popup-bar">
-        <span className="popup-from">{assistant ? `${assistant.name}${assistant.model ? ` · ${assistant.model}` : ""}` : "No assistant"}</span>
+        <span className="popup-from">
+          <LogoMark size={18} /> {assistant ? `${assistant.name}${assistant.model ? `, ${assistant.model}` : ""}` : "No assistant"}
+        </span>
       </div>
       {selection && (
         <p className="popup-source" title={selection}>
@@ -164,15 +168,15 @@ export default function AskPopup() {
         </span>
         {busy && (
           <Button className="btn" onPress={stop}>
-            Stop <kbd aria-hidden>Esc</kbd>
+            <Square size={14} aria-hidden /> Stop <kbd aria-hidden>Esc</kbd>
           </Button>
         )}
         <Button className="btn" onPress={() => void api.openInMain(selection, "ask")}>
-          Continue <kbd aria-hidden>Ctrl+O</kbd>
+          <PanelTopOpen size={16} aria-hidden /> Continue <kbd aria-hidden>Ctrl+O</kbd>
         </Button>
         {selection && (
           <Button className="btn" onPress={() => void api.pasteText(answer)} isDisabled={!answer}>
-            Replace <kbd aria-hidden>Ctrl+R</kbd>
+            <Replace size={16} aria-hidden /> Replace <kbd aria-hidden>Ctrl+R</kbd>
           </Button>
         )}
         <Button
@@ -180,7 +184,7 @@ export default function AskPopup() {
           onPress={() => void navigator.clipboard.writeText(answer).then(() => api.hidePopup())}
           isDisabled={!answer}
         >
-          Copy <kbd aria-hidden>Enter</kbd>
+          <Copy size={16} aria-hidden /> Copy <kbd aria-hidden>Enter</kbd>
         </Button>
       </div>
     </div>

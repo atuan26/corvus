@@ -20,6 +20,15 @@ pub const LABEL: &str = "snip";
 pub enum Mode {
     Translate,
     Copy,
+    /// Started from a button in the main window: the text goes into that tab's input.
+    IntoMain(MainTab),
+}
+
+#[derive(Clone, Copy, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MainTab {
+    Translate,
+    Ask,
 }
 
 struct Snip {
@@ -42,17 +51,22 @@ pub fn start(app: &AppHandle, mode: Mode) {
     tauri::async_runtime::spawn(async move {
         if let Err(e) = begin(&app, mode).await {
             tracing::warn!("screen OCR: {e}");
-            show_result(&app, Mode::Translate, String::new(), Some(e));
+            show_result(&app, mode, String::new(), Some(e));
         }
     });
 }
 
 async fn begin(app: &AppHandle, mode: Mode) -> Result<(), String> {
-    // Keep our own popups out of the picture.
+    // Keep our own windows out of the picture.
     for p in Popup::ALL {
         popup::hide(app, p);
     }
-    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+    if matches!(mode, Mode::IntoMain(_)) {
+        if let Some(w) = app.get_webview_window("main") {
+            let _ = w.hide();
+        }
+    }
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 
     let cursor = app.cursor_position().map_err(|e| e.to_string())?;
     let monitor = app
@@ -113,8 +127,18 @@ fn hide_overlay(app: &AppHandle) {
 
 #[tauri::command]
 pub fn snip_cancel(app: AppHandle) {
-    app.state::<SnipState>().0.lock().unwrap().take();
+    let snip = app.state::<SnipState>().0.lock().unwrap().take();
     hide_overlay(&app);
+    // Started from the main window, which hid itself: bring it back.
+    if snip.is_some_and(|s| matches!(s.mode, Mode::IntoMain(_))) {
+        crate::show_main_window(&app);
+    }
+}
+
+/// Read screen text into the main window's Translate or Ask input.
+#[tauri::command]
+pub fn ocr_start(app: AppHandle, tab: MainTab) {
+    start(&app, Mode::IntoMain(tab));
 }
 
 /// Selected area in captured-image pixels.
@@ -181,6 +205,19 @@ fn show_result(app: &AppHandle, mode: Mode, text: String, error: Option<String>)
             }
             crate::show_main_window(app);
             let _ = app.emit_to("main", "load-text", text);
+            if let Some(n) = note {
+                let _ = app.emit_to("main", "status-note", n);
+            }
+        }
+        Mode::IntoMain(tab) => {
+            crate::show_main_window(app);
+            let (event, text) = match tab {
+                MainTab::Translate => ("load-text", join_lines(&text)),
+                MainTab::Ask => ("load-ask", join_lines(&text)),
+            };
+            if !text.is_empty() {
+                let _ = app.emit_to("main", event, text);
+            }
             if let Some(n) = note {
                 let _ = app.emit_to("main", "status-note", n);
             }

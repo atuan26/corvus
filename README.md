@@ -16,6 +16,9 @@ Enter confirms, Esc or right-click cancels). The text is recognized locally with
 translated in the popup. **Ctrl+Alt+I** does the same but copies the text and opens it in the main
 window, keeping its line breaks.
 
+Inside the app, the scan button in the Translate and Ask boxes does the same and puts the text
+straight into that box.
+
 Requires the `tesseract` package plus language data, e.g. `tesseract-data-vie` for Vietnamese;
 choose languages in Settings → Screen text. From the command line: `corvus ocr shot.png
 [--translate]`.

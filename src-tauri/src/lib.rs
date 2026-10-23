@@ -185,6 +185,7 @@ pub fn run() {
             ocr::snip_finish,
             ocr::snip_cancel,
             ocr::ocr_languages,
+            ocr::ocr_start,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Corvus");

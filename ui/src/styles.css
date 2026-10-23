@@ -1,37 +1,61 @@
 @import "tailwindcss";
+@import "@fontsource/be-vietnam-pro/400.css";
+@import "@fontsource/be-vietnam-pro/500.css";
+@import "@fontsource/be-vietnam-pro/600.css";
 
 :root {
-  --bg: #f6f3ec;
-  --surface: #fffdf8;
-  --surface-2: #efeae0;
-  --ink: #1b2233;
-  --ink-muted: #5b6275;
-  --border: #d8d1c3;
-  --accent: #b86e12;
+  /* Raven palette: cool slate paper, ink, and a feather-indigo accent. */
+  --bg: #edf0f5;
+  --surface: #fafbfd;
+  --surface-2: #e3e8f0;
+  --surface-3: #d9dfea;
+  --ink: #141a2b;
+  --ink-muted: #586176;
+  --border: #d0d7e3;
+  --accent: #4950c8;
+  --accent-hover: #3d43b3;
   --accent-ink: #ffffff;
-  --focus: #2457d6;
-  --danger: #b42318;
-  --danger-bg: #fdecea;
+  --accent-soft: #e4e6fb;
+  --success: #1f8a83;
+  --focus: #4950c8;
+  --danger: #b4232c;
+  --danger-bg: #fbe9ea;
+  /* Feather sheen: only the logo and the selected-tab indicator use it. */
+  --sheen-1: #5b63e6;
+  --sheen-2: #2fa49c;
+  --sheen-3: #9a7cf6;
+  --shadow: 0 1px 2px rgb(20 26 43 / 0.06), 0 8px 24px rgb(20 26 43 / 0.08);
   --radius: 10px;
+  --radius-lg: 14px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   color-scheme: light dark;
-  font-family: "Inter", "Noto Sans", system-ui, sans-serif;
+  font-family: "Be Vietnam Pro", "Noto Sans", system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #141823;
-    --surface: #1c2130;
-    --surface-2: #252b3c;
-    --ink: #ece8df;
-    --ink-muted: #a3a9b8;
-    --border: #343b50;
-    --accent: #e8a33d;
-    --accent-ink: #1b1306;
-    --focus: #8fb0ff;
-    --danger: #ff8a80;
-    --danger-bg: #3a1c1c;
+    --bg: #0e1220;
+    --surface: #161b2b;
+    --surface-2: #1f2537;
+    --surface-3: #283047;
+    --ink: #e7eaf2;
+    --ink-muted: #9aa3b8;
+    --border: #2b3348;
+    --accent: #8f96ff;
+    --accent-hover: #a6acff;
+    --accent-ink: #0e1220;
+    --accent-soft: #262c52;
+    --success: #4fc1b8;
+    --focus: #a6acff;
+    --danger: #ff8a8f;
+    --danger-bg: #3a1d22;
+    --sheen-1: #8f96ff;
+    --sheen-2: #4fc1b8;
+    --sheen-3: #c3a8ff;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 30px rgb(0 0 0 / 0.35);
   }
 }
 
@@ -104,10 +128,21 @@ kbd {
 }
 
 .brand {
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  margin: 0 8px 0 0;
+  margin: 0 10px 0 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-word {
+  font-weight: 600;
+  font-size: 1.08rem;
+  letter-spacing: -0.01em;
 }
 
 .toolbar-spacer {
@@ -161,7 +196,25 @@ kbd {
   color: inherit;
   cursor: pointer;
   border-radius: var(--radius);
-  transition: background-color 120ms;
+  transition: background-color 140ms var(--ease), border-color 140ms var(--ease), transform 90ms var(--ease);
+}
+
+/* A small press response confirms the click without moving the layout. */
+.icon-btn[data-pressed], .select-button[data-pressed], .btn[data-pressed] {
+  transform: scale(0.97);
+}
+
+.btn-icon {
+  display: inline-flex;
+}
+
+.btn-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.btn-icon-label {
+  padding-left: 10px;
 }
 
 .field-button {
@@ -182,6 +235,22 @@ kbd {
   height: 36px;
   padding: 0;
   font-size: 1.05rem;
+  color: var(--ink-muted);
+}
+
+.icon-btn[data-hovered] {
+  color: var(--ink);
+}
+
+.icon-btn.quiet {
+  border-color: transparent;
+  background: transparent;
+  width: 32px;
+  height: 32px;
+}
+
+.icon-btn.quiet[data-hovered] {
+  background: var(--surface-2);
 }
 
 .icon-btn[data-hovered], .select-button[data-hovered], .btn[data-hovered] {
@@ -201,8 +270,8 @@ kbd {
 }
 
 .btn-primary[data-hovered] {
-  background: var(--accent);
-  filter: brightness(1.08);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .btn-primary kbd {
@@ -215,6 +284,21 @@ kbd {
 .select-button {
   min-width: 170px;
   justify-content: space-between;
+}
+
+.popover[data-entering] {
+  animation: pop-in 140ms var(--ease);
+}
+
+.popover[data-exiting] {
+  animation: pop-in 100ms var(--ease) reverse;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
 }
 
 .popover {
@@ -301,11 +385,9 @@ kbd {
 }
 
 .pane-label {
-  padding: 8px 14px 0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  padding: 10px 14px 0;
+  font-size: 0.82rem;
+  font-weight: 500;
   color: var(--ink-muted);
 }
 
@@ -355,6 +437,24 @@ kbd {
 .error ul {
   margin: 4px 0 0;
   padding-left: 18px;
+}
+
+.overlay[data-entering] {
+  animation: fade-in 160ms var(--ease);
+}
+
+.overlay[data-exiting] {
+  animation: fade-in 120ms var(--ease) reverse;
+}
+
+.overlay[data-entering] .modal {
+  animation: pop-in 180ms var(--ease);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
 .overlay {
@@ -656,7 +756,7 @@ kbd {
 
 .test-ok::before {
   content: "✓ ";
-  color: #2e7d32;
+  color: var(--success);
 }
 
 .switch {
@@ -772,11 +872,47 @@ code {
   outline: none;
 }
 
+.tab {
+  position: relative;
+  transition: color 140ms var(--ease);
+}
+
 .tab[data-selected] {
-  background: var(--surface);
   color: var(--ink);
-  font-weight: 600;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+  font-weight: 500;
+}
+
+.tab-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tab-label svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The selected-tab pill glides to the new tab; it carries a thin feather-sheen edge. */
+.tab-indicator {
+  position: absolute;
+  inset: 0;
+  border-radius: calc(var(--radius) - 3px);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgb(20 26 43 / 0.12), inset 0 -2px 0 0 transparent;
+  transition: translate 220ms var(--ease), width 220ms var(--ease);
+}
+
+.tab-indicator::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--sheen-1), var(--sheen-2), var(--sheen-3));
 }
 
 .tab[data-focus-visible] {
@@ -785,7 +921,8 @@ code {
 }
 
 .tab kbd {
-  font-size: 0.68rem;
+  position: relative;
+  font-size: 0.66rem;
 }
 
 .tabpanel {
@@ -1124,7 +1261,7 @@ code {
 
 .snip-rect {
   position: absolute;
-  border: 2px solid #e8a33d;
+  border: 2px solid var(--sheen-2);
   box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.45);
 }
 
@@ -1185,4 +1322,191 @@ code {
 .checkbox[data-focus-visible] .checkbox-box {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+
+/* Tooltips */
+
+.tooltip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 0.8rem;
+  box-shadow: var(--shadow);
+}
+
+.tooltip kbd {
+  background: transparent;
+  color: inherit;
+  border-color: currentColor;
+  opacity: 0.75;
+}
+
+.tooltip[data-entering] {
+  animation: fade-in 120ms var(--ease);
+}
+
+/* A new answer or translation fades in where it appears. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.turn {
+  animation: rise-in 200ms var(--ease);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+.pane-footer-start {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pane-footer-end {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn.copied {
+  color: var(--success);
+  border-color: var(--success);
+}
+
+/* Settings layout: section list on the left, one section at a time on the right. */
+
+.settings-tabs {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 22px;
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+}
+
+.settings-nav-item {
+  position: relative;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  color: var(--ink-muted);
+  cursor: pointer;
+  outline: none;
+  transition: color 140ms var(--ease);
+}
+
+.settings-nav-item[data-hovered] {
+  color: var(--ink);
+}
+
+.settings-nav-item[data-selected] {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.settings-nav-item[data-focus-visible] {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.nav-indicator {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgb(20 26 43 / 0.1);
+  transition: translate 220ms var(--ease), height 220ms var(--ease);
+}
+
+.nav-indicator::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--sheen-1), var(--sheen-2), var(--sheen-3));
+}
+
+.settings-panel {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 6px 18px 2px;
+  outline: none;
+}
+
+.settings-panel > * {
+  max-width: 760px;
+}
+
+.settings-panel[data-entering] {
+  animation: fade-in 160ms var(--ease);
+}
+
+.settings-title {
+  margin: 2px 0 12px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+@media (max-width: 720px) {
+  .settings-tabs {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .settings-nav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .settings-nav-item {
+    white-space: nowrap;
+  }
+
+  .nav-indicator::before {
+    display: none;
+  }
+}
+
+.popup-from {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.popup {
+  animation: fade-in 140ms var(--ease);
+}
+
+/* Containers receive focus programmatically; rings belong on the items inside them. */
+.tabs[data-focus-visible],
+.settings-tabs[data-focus-visible],
+.settings-panel[data-focus-visible] {
+  outline: none;
 }

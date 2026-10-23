@@ -28,7 +28,7 @@ impl GoogleFree {
 #[async_trait]
 impl Translator for GoogleFree {
     fn info(&self) -> ProviderInfo {
-        ProviderInfo { id: self.id.clone(), name: "Google (free)".into(), kind: "google-free".into() }
+        ProviderInfo { id: self.id.clone(), name: "Google".into(), kind: "google-free".into() }
     }
 
     async fn translate(&self, req: &TranslateRequest) -> Result<Translation, ProviderError> {

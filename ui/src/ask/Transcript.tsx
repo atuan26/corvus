@@ -1,4 +1,5 @@
 import { Button } from "react-aria-components";
+import { Copy } from "lucide-react";
 import { api } from "../api";
 import { Markdown } from "./Markdown";
 import type { Turn } from "./useAsk";
@@ -62,7 +63,7 @@ export function TurnView({ turn, onSignIn }: { turn: Turn; onSignIn?: () => void
       {!turn.streaming && text && (
         <div className="turn-actions">
           <Button className="btn" onPress={() => void navigator.clipboard.writeText(text)}>
-            Copy
+            <Copy size={15} aria-hidden /> Copy
           </Button>
         </div>
       )}
