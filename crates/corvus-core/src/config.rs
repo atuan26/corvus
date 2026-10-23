@@ -19,6 +19,68 @@ pub struct Config {
     pub shortcuts: Shortcuts,
     /// Fallback order, by provider id.
     pub providers: Vec<ProviderConfig>,
+    /// AI assistants for Ask, in menu order.
+    pub assistants: Vec<AssistantConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AssistantConfig {
+    pub id: String,
+    pub kind: AssistantKind,
+    #[serde(default = "yes")]
+    pub enabled: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_url: Option<String>,
+    /// Empty means the provider's default (or, for ChatGPT, the account's best model).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_key_env: Option<String>,
+    #[serde(default = "yes")]
+    pub web_search: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AssistantKind {
+    /// ChatGPT plan via "Sign in with ChatGPT".
+    Chatgpt,
+    /// Claude via an Anthropic API key.
+    Anthropic,
+    /// OpenAI API key (Responses API).
+    Openai,
+    /// Any OpenAI-compatible chat completions server.
+    OpenaiCompatible,
+}
+
+impl AssistantConfig {
+    pub fn new(id: &str, kind: AssistantKind) -> Self {
+        Self {
+            id: id.into(),
+            kind,
+            enabled: true,
+            name: None,
+            base_url: None,
+            model: None,
+            api_key: None,
+            api_key_env: None,
+            web_search: true,
+        }
+    }
+
+    /// Same lookup order as translation providers: config file, keychain, environment.
+    pub fn resolve_key(&self, secrets: &dyn SecretStore) -> (Option<String>, KeySource) {
+        let as_provider = ProviderConfig {
+            api_key: self.api_key.clone(),
+            api_key_env: self.api_key_env.clone(),
+            ..ProviderConfig::new(&self.id, ProviderKind::OpenaiCompatible)
+        };
+        as_provider.resolve_key(secrets)
+    }
 }
 
 /// Key sequences such as `"Ctrl+Alt+E"`. An empty string disables that shortcut.
@@ -28,6 +90,7 @@ pub struct Shortcuts {
     pub show_window: String,
     pub translate_selection: String,
     pub replace_selection: String,
+    pub ask_selection: String,
 }
 
 impl Default for Shortcuts {
@@ -36,6 +99,7 @@ impl Default for Shortcuts {
             show_window: "Ctrl+Alt+C".into(),
             translate_selection: "Ctrl+Alt+E".into(),
             replace_selection: "Ctrl+Alt+R".into(),
+            ask_selection: "Ctrl+Alt+A".into(),
         }
     }
 }
@@ -95,6 +159,13 @@ impl Default for Config {
             default_target: "en".into(),
             timeout_secs: 15,
             shortcuts: Shortcuts::default(),
+            assistants: vec![
+                AssistantConfig::new("chatgpt", AssistantKind::Chatgpt),
+                AssistantConfig {
+                    api_key_env: Some("ANTHROPIC_API_KEY".into()),
+                    ..AssistantConfig::new("claude", AssistantKind::Anthropic)
+                },
+            ],
             providers: vec![
                 ProviderConfig::new("google", ProviderKind::GoogleFree),
                 ProviderConfig {
@@ -233,6 +304,23 @@ impl Config {
                 }
                 if p.model.as_deref().is_none_or(|m| m.trim().is_empty()) {
                     errors.push(format!("{}: model is required", p.id));
+                }
+            }
+        }
+        let mut seen = std::collections::HashSet::new();
+        for a in &self.assistants {
+            if a.id.is_empty() || !a.id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_') {
+                errors.push(format!("Assistant id \"{}\" may only use a-z, 0-9, - and _", a.id));
+            }
+            if !seen.insert(a.id.as_str()) {
+                errors.push(format!("Assistant id \"{}\" is used twice", a.id));
+            }
+            if a.kind == AssistantKind::OpenaiCompatible {
+                if a.base_url.as_deref().is_none_or(|u| !(u.starts_with("http://") || u.starts_with("https://"))) {
+                    errors.push(format!("{}: base URL must start with http:// or https://", a.id));
+                }
+                if a.model.as_deref().is_none_or(|m| m.trim().is_empty()) {
+                    errors.push(format!("{}: model is required", a.id));
                 }
             }
         }
