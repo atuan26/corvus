@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/corvus-core", "crates/corvus-cli", "src-tauri"]
+members = ["crates/corvus-core", "crates/corvus-ai", "crates/corvus-cli", "src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
