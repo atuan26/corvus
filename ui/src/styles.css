@@ -235,6 +235,10 @@ kbd {
   color: var(--accent);
 }
 
+.listbox-native {
+  color: var(--ink-muted);
+}
+
 .listbox-empty {
   padding: 6px 10px;
   color: var(--ink-muted);

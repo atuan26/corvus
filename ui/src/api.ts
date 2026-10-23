@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 export interface Language {
   code: string;
   name: string;
+  native: string;
 }
 
 export interface ProviderInfo {
