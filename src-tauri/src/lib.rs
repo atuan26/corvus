@@ -8,7 +8,7 @@ mod tray;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use corvus_core::{Config, Router};
+use corvus_core::{Config, Keychain, Router};
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
@@ -44,7 +44,7 @@ fn load_state() -> AppState {
         }
         None => Config::default(),
     };
-    let (router, provider_warnings) = Router::from_config(&config);
+    let (router, provider_warnings) = Router::from_config(&config, &Keychain);
     warnings.extend(provider_warnings);
     let prefs = Prefs {
         source: config.default_source.clone(),

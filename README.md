@@ -13,8 +13,19 @@ A keyboard-first desktop translator and AI assistant, built as a modern replacem
 | id (default config) | Kind | Needs | Enabled by default |
 |---|---|---|---|
 | `google` | `google-free` | nothing (unofficial endpoint) | yes |
-| `deepl` | `deepl` | `DEEPL_API_KEY` | no |
+| `deepl` | `deepl` | API key (keychain or `DEEPL_API_KEY`) | no |
 | `ollama` | `openai-compatible` | a running Ollama, or any OpenAI-compatible `base_url` + `model` | no |
+
+API keys are stored in the OS keychain (Secret Service / KWallet / GNOME Keyring, Windows
+Credential Manager, macOS Keychain) under service `corvus`, account = provider id:
+
+```sh
+corvus key set deepl      # paste the key; read from stdin, not saved in shell history
+corvus key delete deepl
+```
+
+Lookup order: `api_key` in the config file (fallback when no keychain is available), then the
+keychain, then the environment variable named by `api_key_env`.
 
 The config is created at `~/.config/corvus/config.toml` on first run. Providers are tried in
 file order; when one fails or times out, the next is used.

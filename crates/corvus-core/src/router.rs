@@ -6,6 +6,7 @@ use serde::Serialize;
 use crate::config::Config;
 use crate::error::ProviderError;
 use crate::provider::{ProviderInfo, TranslateRequest, Translation, Translator};
+use crate::secrets::SecretStore;
 
 /// Tries providers in order until one succeeds, so a single dead service never blocks a translation.
 pub struct Router {
@@ -37,11 +38,11 @@ impl Router {
     }
 
     /// Build from config. Misconfigured providers are skipped and reported as warnings.
-    pub fn from_config(config: &Config) -> (Self, Vec<String>) {
+    pub fn from_config(config: &Config, secrets: &dyn SecretStore) -> (Self, Vec<String>) {
         let mut providers = Vec::new();
         let mut warnings = Vec::new();
         for p in config.providers.iter().filter(|p| p.enabled) {
-            match p.build() {
+            match p.build(secrets) {
                 Ok(t) => providers.push(t),
                 Err(e) => warnings.push(e.to_string()),
             }

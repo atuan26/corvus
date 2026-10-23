@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-use corvus_core::{lang, Config, Router, RouterError, TranslateRequest};
+use corvus_core::{lang, Config, Keychain, Router, RouterError, SecretStore, TranslateRequest};
 
 #[derive(Parser)]
 #[command(name = "corvus", version, about = "Translate text from the command line")]
@@ -37,6 +37,19 @@ enum Command {
     Providers,
     /// List language codes
     Languages,
+    /// Manage provider API keys in the OS keychain
+    Key {
+        #[command(subcommand)]
+        action: KeyAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum KeyAction {
+    /// Store a key, read from stdin so it stays out of shell history
+    Set { provider: String },
+    /// Remove a stored key
+    Delete { provider: String },
 }
 
 #[tokio::main]
@@ -53,7 +66,10 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let (router, warnings) = Router::from_config(&config);
+    if let Command::Key { action } = &cli.command {
+        return manage_key(&config, action);
+    }
+    let (router, warnings) = Router::from_config(&config, &Keychain);
     for w in &warnings {
         eprintln!("warning: {w}");
     }
@@ -69,6 +85,7 @@ async fn main() -> ExitCode {
                 println!("{:<6} {}", l.code, l.name);
             }
         }
+        Command::Key { .. } => unreachable!("handled above"),
         Command::Translate { source, target, provider, json, text } => {
             let text = if text.is_empty() {
                 if std::io::stdin().is_terminal() {
@@ -107,4 +124,33 @@ async fn main() -> ExitCode {
         }
     }
     ExitCode::SUCCESS
+}
+
+fn manage_key(config: &Config, action: &KeyAction) -> ExitCode {
+    let (KeyAction::Set { provider } | KeyAction::Delete { provider }) = action;
+    if !config.providers.iter().any(|p| &p.id == provider) {
+        eprintln!("error: no provider with id \"{provider}\" (see `corvus providers`)");
+        return ExitCode::FAILURE;
+    }
+    let result = match action {
+        KeyAction::Set { .. } => {
+            if std::io::stdin().is_terminal() {
+                eprintln!("Paste the API key, then press Enter:");
+            }
+            let mut key = String::new();
+            match std::io::stdin().read_line(&mut key) {
+                Ok(_) if !key.trim().is_empty() => Keychain.set(provider, key.trim()),
+                Ok(_) => Err("empty key".into()),
+                Err(e) => Err(e.to_string()),
+            }
+        }
+        KeyAction::Delete { .. } => Keychain.delete(provider),
+    };
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("error: {e}");
+            ExitCode::FAILURE
+        }
+    }
 }
