@@ -1,0 +1,237 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button, Label, TextArea, TextField } from "react-aria-components";
+import { api, asUiError, type Language, type ProviderInfo, type Translation, type UiError } from "./api";
+import { LanguagePicker } from "./components/LanguagePicker";
+import { ProviderSelect } from "./components/ProviderSelect";
+import { ShortcutsDialog } from "./components/ShortcutsDialog";
+import { matchProviderDigit, matchShortcut } from "./shortcuts";
+
+const AUTO_TRANSLATE_DELAY_MS = 600;
+
+export default function App() {
+  const [languages, setLanguages] = useState<Language[]>([]);
+  const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const [provider, setProvider] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [source, setSource] = useState("auto");
+  const [target, setTarget] = useState("en");
+  const [text, setText] = useState("");
+  const [result, setResult] = useState<Translation | null>(null);
+  const [error, setError] = useState<UiError | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const sourceTextRef = useRef<HTMLTextAreaElement>(null);
+  const sourceLangRef = useRef<HTMLInputElement>(null);
+  const targetLangRef = useRef<HTMLInputElement>(null);
+  // Responses can arrive out of order while typing; only the latest one is shown.
+  const requestSeq = useRef(0);
+
+  useEffect(() => {
+    Promise.all([api.languages(), api.providers(), api.appInfo()])
+      .then(([langs, provs, info]) => {
+        setLanguages(langs);
+        setProviders(provs);
+        setProvider(provs[0]?.id ?? null);
+        setSource(info.default_source);
+        setTarget(info.default_target);
+        setWarnings(info.warnings);
+      })
+      .catch((e) => setError(asUiError(e)));
+    sourceTextRef.current?.focus();
+  }, []);
+
+  const languageName = useCallback(
+    (code: string | null | undefined) =>
+      languages.find((l) => l.code.toLowerCase() === code?.toLowerCase())?.name ?? code ?? "",
+    [languages],
+  );
+
+  const translate = useCallback(
+    async (providerOverride?: string) => {
+      const seq = ++requestSeq.current;
+      if (!text.trim()) {
+        setResult(null);
+        setError(null);
+        setBusy(false);
+        return;
+      }
+      setBusy(true);
+      setStatus("Translating…");
+      try {
+        const t = await api.translate(text, source, target, providerOverride ?? provider);
+        if (seq !== requestSeq.current) return;
+        setResult(t);
+        setError(null);
+        const by = providers.find((p) => p.id === t.provider)?.name ?? t.provider;
+        const from = source === "auto" && t.detected_source ? `from ${languageName(t.detected_source)} ` : "";
+        const fellBack = (providerOverride ?? provider) !== t.provider ? " (fallback)" : "";
+        setStatus(`Translated ${from}by ${by}${fellBack}`);
+      } catch (e) {
+        if (seq !== requestSeq.current) return;
+        setError(asUiError(e));
+        setStatus("");
+      } finally {
+        if (seq === requestSeq.current) setBusy(false);
+      }
+    },
+    [text, source, target, provider, providers, languageName],
+  );
+
+  useEffect(() => {
+    const id = window.setTimeout(() => void translate(), AUTO_TRANSLATE_DELAY_MS);
+    return () => window.clearTimeout(id);
+    // Re-run only when the inputs change, not when `translate` is recreated for other reasons.
+  }, [text, source, target, provider]);
+
+  const swap = useCallback(() => {
+    const from = source === "auto" ? (result?.detected_source ?? null) : source;
+    if (!from) {
+      setStatus("Cannot swap until the source language is detected");
+      return;
+    }
+    setSource(target);
+    setTarget(from);
+    if (result) setText(result.text);
+  }, [source, target, result]);
+
+  const copy = useCallback(async () => {
+    if (!result) return;
+    try {
+      await navigator.clipboard.writeText(result.text);
+      setStatus("Translation copied");
+    } catch {
+      setStatus("Could not copy to clipboard");
+    }
+  }, [result]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const digit = matchProviderDigit(e);
+      if (digit !== null && providers[digit]) {
+        e.preventDefault();
+        setProvider(providers[digit].id);
+        return;
+      }
+      const action = matchShortcut(e);
+      if (!action) return;
+      e.preventDefault();
+      switch (action) {
+        case "translate":
+          void translate();
+          break;
+        case "swap":
+          swap();
+          break;
+        case "copy":
+          void copy();
+          break;
+        case "clear":
+          setText("");
+          sourceTextRef.current?.focus();
+          break;
+        case "focusSource":
+          sourceTextRef.current?.focus();
+          break;
+        case "focusSourceLang":
+          sourceLangRef.current?.focus();
+          break;
+        case "focusTargetLang":
+          targetLangRef.current?.focus();
+          break;
+        case "help":
+          setHelpOpen(true);
+          break;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [providers, translate, swap, copy]);
+
+  return (
+    <div className="app">
+      <header className="toolbar">
+        <h1 className="brand">Corvus</h1>
+        <ProviderSelect providers={providers} value={provider} onChange={setProvider} />
+        <Button className="icon-btn" onPress={() => setHelpOpen(true)} aria-label="Keyboard shortcuts (Ctrl+/)">
+          <span aria-hidden>?</span>
+        </Button>
+      </header>
+
+      {warnings.length > 0 && (
+        <ul className="warnings" aria-label="Configuration warnings">
+          {warnings.map((w) => (
+            <li key={w}>{w}</li>
+          ))}
+        </ul>
+      )}
+
+      <div className="lang-bar">
+        <LanguagePicker
+          label="Source language"
+          languages={languages}
+          value={source}
+          onChange={setSource}
+          inputRef={sourceLangRef}
+        />
+        <Button className="icon-btn" onPress={swap} aria-label="Swap languages (Ctrl+R)">
+          <span aria-hidden>⇄</span>
+        </Button>
+        <LanguagePicker
+          label="Target language"
+          languages={languages.filter((l) => l.code !== "auto")}
+          value={target}
+          onChange={setTarget}
+          inputRef={targetLangRef}
+        />
+      </div>
+
+      <main className="panes">
+        <TextField className="pane" value={text} onChange={setText}>
+          <Label className="pane-label">Text to translate</Label>
+          <TextArea ref={sourceTextRef} className="pane-text" placeholder="Type or paste text…" spellCheck />
+          <div className="pane-footer">
+            <span>{text.length.toLocaleString()} characters</span>
+            <Button className="btn btn-primary" onPress={() => void translate()} isDisabled={!text.trim()}>
+              Translate <kbd aria-hidden>Ctrl+Enter</kbd>
+            </Button>
+          </div>
+        </TextField>
+
+        <TextField className="pane pane-result" value={result?.text ?? ""} isReadOnly aria-busy={busy}>
+          <Label className="pane-label">Translation</Label>
+          <TextArea className="pane-text" placeholder={busy ? "Translating…" : "Translation appears here"} />
+          <div className="pane-footer">
+            <span />
+            <Button className="btn" onPress={() => void copy()} isDisabled={!result}>
+              Copy <kbd aria-hidden>Ctrl+Shift+C</kbd>
+            </Button>
+          </div>
+        </TextField>
+      </main>
+
+      <footer className="statusbar">
+        <p role="status" aria-live="polite" className="status">
+          {status}
+        </p>
+        {error && (
+          <div role="alert" className="error">
+            <strong>{error.message}</strong>
+            {error.attempts.length > 0 && (
+              <ul>
+                {error.attempts.map((a) => (
+                  <li key={a.provider}>
+                    {providers.find((p) => p.id === a.provider)?.name ?? a.provider}: {a.error}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </footer>
+
+      <ShortcutsDialog isOpen={helpOpen} onOpenChange={setHelpOpen} />
+    </div>
+  );
+}
