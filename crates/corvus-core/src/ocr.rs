@@ -16,14 +16,36 @@ pub struct OcrConfig {
     pub tesseract: Option<String>,
 }
 
+fn default_binary() -> &'static str {
+    // The usual Windows installer (UB Mannheim) doesn't add itself to PATH.
+    #[cfg(windows)]
+    {
+        const INSTALLED: &str = r"C:\Program Files\Tesseract-OCR\tesseract.exe";
+        if std::path::Path::new(INSTALLED).exists() {
+            return INSTALLED;
+        }
+    }
+    "tesseract"
+}
+
 impl OcrConfig {
     fn binary(&self) -> &str {
-        self.tesseract.as_deref().filter(|p| !p.is_empty()).unwrap_or("tesseract")
+        self.tesseract.as_deref().filter(|p| !p.is_empty()).unwrap_or_else(|| default_binary())
+    }
+
+    fn command(&self) -> Command {
+        #[cfg_attr(not(windows), allow(unused_mut))]
+        let mut cmd = Command::new(self.binary());
+        // A GUI app spawning a console program would otherwise flash a console window.
+        #[cfg(windows)]
+        std::os::windows::process::CommandExt::creation_flags(&mut cmd, 0x0800_0000); // CREATE_NO_WINDOW
+        cmd
     }
 
     /// Installed Tesseract language packs, without the `osd` orientation model.
     pub fn installed_languages(&self) -> Result<Vec<String>, String> {
-        let out = Command::new(self.binary())
+        let out = self
+            .command()
             .arg("--list-langs")
             .output()
             .map_err(|e| not_installed(self.binary(), e))?;
@@ -64,7 +86,8 @@ impl OcrConfig {
     /// Recognize text in an encoded image (PNG, etc.). Blocking.
     pub fn recognize(&self, image: &[u8]) -> Result<String, String> {
         let langs = self.language_arg()?;
-        let mut child = Command::new(self.binary())
+        let mut child = self
+            .command()
             .args(["stdin", "stdout", "-l", &langs, "--psm", "3"])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -88,7 +111,7 @@ impl OcrConfig {
 
 fn not_installed(binary: &str, e: std::io::Error) -> String {
     if e.kind() == std::io::ErrorKind::NotFound {
-        format!("Tesseract is not installed (\"{binary}\" not found). Install the tesseract package to use OCR.")
+        format!("Tesseract is not installed (\"{binary}\" not found). Install Tesseract to use OCR.")
     } else {
         e.to_string()
     }

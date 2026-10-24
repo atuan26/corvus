@@ -23,6 +23,10 @@ Requires the `tesseract` package plus language data, e.g. `tesseract-data-vie` f
 choose languages in Settings → Screen text. From the command line: `corvus ocr shot.png
 [--translate]`.
 
+On Windows, install Tesseract with the [UB Mannheim installer](https://github.com/UB-Mannheim/tesseract/wiki)
+and tick the languages you need; Corvus finds it in `C:\Program Files\Tesseract-OCR`, or set its
+path in the config (`[ocr] tesseract = "..."`).
+
 ## Ask AI
 
 The **Ask AI** tab (Ctrl+2) is a chat with streaming answers, optional web search with source
@@ -131,3 +135,7 @@ pnpm tauri build      # installers in target/release/bundle
 ```
 
 Linux build deps: `webkit2gtk-4.1`, `libayatana-appindicator`, `librsvg`.
+
+Windows builds come from the **Windows build** GitHub workflow (pull requests, `v*` tags, or run
+it by hand). Its `corvus-windows` artifact holds the setup `.exe`, the `.msi`, and a bare
+`corvus-app.exe` that runs without installing. Windows 10/11 already include WebView2.
