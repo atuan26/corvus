@@ -16,6 +16,30 @@ export interface Translation {
   text: string;
   detected_source: string | null;
   provider: string;
+  details?: Details;
+}
+
+/** Dictionary extras for a word or short phrase. */
+export interface Details {
+  /** Google's respelling (English) or romanization (other scripts); not IPA. */
+  source_phonetic?: string;
+  target_phonetic?: string;
+  /** Suggested spelling when the source looks mistyped. */
+  corrected?: string;
+  meanings: Meaning[];
+  examples: string[];
+}
+
+export interface Meaning {
+  pos: string;
+  translations: { word: string; back: string[] }[];
+  senses: { gloss: string; example?: string }[];
+  synonyms: string[];
+}
+
+export interface Ipa {
+  text: string;
+  accent?: string;
 }
 
 export interface UiError {
@@ -174,6 +198,9 @@ export interface SettingsInput {
 export const api = {
   translate: (text: string, source: string, target: string, provider: string | null) =>
     invoke<Translation>("translate", { request: { text, source, target }, provider }),
+  ipa: (word: string, lang: string) => invoke<Ipa[]>("ipa", { word, lang }),
+  /** MP3 bytes of `text` read aloud. */
+  speak: (text: string, lang: string) => invoke<ArrayBuffer>("speak", { text, lang }),
   providers: () => invoke<ProviderInfo[]>("providers"),
   languages: () => invoke<Language[]>("languages"),
   appInfo: () => invoke<AppInfo>("app_info"),

@@ -29,6 +29,7 @@ import {
 import { LanguagePicker } from "./components/LanguagePicker";
 import { ProviderSelect } from "./components/ProviderSelect";
 import { ShortcutsDialog } from "./components/ShortcutsDialog";
+import { WordDetails } from "./components/WordDetails";
 import Settings from "./Settings";
 import { matchProviderDigit, matchShortcut } from "./shortcuts";
 
@@ -53,6 +54,8 @@ export default function App() {
   const [target, setTarget] = useState("en");
   const [text, setText] = useState("");
   const [result, setResult] = useState<Translation | null>(null);
+  // The input `result` belongs to; `text` moves on while the next translation is pending.
+  const [resultFor, setResultFor] = useState("");
   const [error, setError] = useState<UiError | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatusText] = useState("");
@@ -172,6 +175,7 @@ export default function App() {
         const t = await api.translate(text, source, target, providerOverride ?? provider);
         if (seq !== requestSeq.current) return;
         setResult(t);
+        setResultFor(text);
         setError(null);
         const by = providers.find((p) => p.id === t.provider)?.name ?? t.provider;
         const from = source === "auto" && t.detected_source ? `from ${languageName(t.detected_source)} ` : "";
@@ -398,6 +402,19 @@ export default function App() {
                 </div>
               </TextField>
             </main>
+
+            {result && (
+              <WordDetails
+                text={resultFor}
+                source={source === "auto" ? result.detected_source : source}
+                target={target}
+                result={result}
+                onUseCorrection={(t) => {
+                  setText(t);
+                  sourceTextRef.current?.focus();
+                }}
+              />
+            )}
 
             <footer className="statusbar">
               <p role="status" aria-live="polite" className={statusQuiet ? "status sr-only" : "status"}>

@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
+use crate::dictionary::Details;
 use crate::error::ProviderError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,6 +34,9 @@ pub struct Translation {
     pub detected_source: Option<String>,
     /// Id of the provider that produced this result.
     pub provider: String,
+    /// Dictionary extras (pronunciation, meanings, examples), when the provider has them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub details: Option<Details>,
 }
 
 #[derive(Debug, Clone, Serialize)]

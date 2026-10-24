@@ -97,7 +97,7 @@ impl Translator for OpenAiCompatible {
             .next()
             .and_then(|c| c.message.content)
             .ok_or_else(|| ProviderError::Parse("no message content".into()))?;
-        Ok(Translation { text: text.trim().into(), detected_source: None, provider: self.id.clone() })
+        Ok(Translation { text: text.trim().into(), detected_source: None, provider: self.id.clone(), details: None })
     }
 }
 

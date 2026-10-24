@@ -439,6 +439,143 @@ kbd {
   padding-left: 18px;
 }
 
+/* Dictionary details under the panes (and, compact, in the popup) */
+
+.word-details {
+  flex: 0 1 auto;
+  max-height: 42%;
+  overflow: auto;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  font-size: 0.92rem;
+  user-select: text;
+}
+
+.word-details.compact {
+  max-height: none;
+  overflow: visible;
+  margin-top: 6px;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: 0.85rem;
+}
+
+.wd-correction {
+  margin: 0 0 6px;
+  color: var(--ink-muted);
+}
+
+.wd-pronounce {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.wd-side {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.wd-ipa {
+  font-family: "Charis SIL", "Doulos SIL", "Gentium Plus", "Noto Sans", "DejaVu Sans", sans-serif;
+  font-size: 1.02em;
+}
+
+.wd-ipa small {
+  margin-left: 5px;
+  font-size: 0.78em;
+  color: var(--ink-muted);
+}
+
+.wd-phonetic {
+  color: var(--ink-muted);
+}
+
+.wd-meaning {
+  margin-top: 10px;
+}
+
+.compact .wd-meaning {
+  margin-top: 6px;
+}
+
+.wd-pos {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.wd-terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wd-senses,
+.wd-examples {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+
+.wd-senses {
+  list-style: decimal;
+}
+
+.wd-examples {
+  list-style: disc;
+}
+
+.wd-senses li::marker,
+.wd-examples li::marker {
+  color: var(--ink-muted);
+}
+
+.wd-senses li + li,
+.wd-examples li + li {
+  margin-top: 3px;
+}
+
+.wd-example {
+  display: block;
+  font-style: italic;
+  color: var(--ink-muted);
+}
+
+.wd-synonyms {
+  margin: 6px 0 0;
+}
+
+.wd-label {
+  color: var(--ink-muted);
+}
+
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.word-details > .link-btn {
+  margin-top: 8px;
+}
+
 .overlay[data-entering] {
   animation: fade-in 160ms var(--ease);
 }
