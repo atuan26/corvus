@@ -1,5 +1,9 @@
+use std::sync::LazyLock;
+
+use corvus_core::dictionary::Wiktionary;
 use corvus_core::lang::{self, Language};
-use corvus_core::{Attempt, ProviderInfo, RouterError, Shortcuts, TranslateRequest, Translation};
+use corvus_core::speech::GoogleSpeech;
+use corvus_core::{Attempt, Ipa, ProviderInfo, RouterError, Shortcuts, TranslateRequest, Translation};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 
@@ -29,6 +33,22 @@ pub async fn translate(
     provider: Option<String>,
 ) -> Result<Translation, UiError> {
     Ok(state.router().translate(&request, provider.as_deref()).await?)
+}
+
+static WIKTIONARY: LazyLock<Wiktionary> = LazyLock::new(|| Wiktionary::new(None));
+static SPEECH: LazyLock<GoogleSpeech> = LazyLock::new(|| GoogleSpeech::new(None));
+
+/// IPA for a word or short phrase; empty when Wiktionary has none.
+#[tauri::command]
+pub async fn ipa(word: String, lang: String) -> Result<Vec<Ipa>, String> {
+    WIKTIONARY.ipa(&word, &lang).await.map_err(|e| e.to_string())
+}
+
+/// MP3 of `text` read aloud, sent as raw bytes rather than a JSON number array.
+#[tauri::command]
+pub async fn speak(text: String, lang: String) -> Result<tauri::ipc::Response, String> {
+    let audio = SPEECH.speak(&text, &lang).await.map_err(|e| e.to_string())?;
+    Ok(tauri::ipc::Response::new(audio))
 }
 
 #[tauri::command]

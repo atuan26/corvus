@@ -81,6 +81,7 @@ impl Translator for DeepL {
             text: item.text,
             detected_source: item.detected_source_language.map(|l| l.to_lowercase()),
             provider: self.id.clone(),
+            details: None,
         })
     }
 }

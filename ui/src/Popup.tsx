@@ -5,6 +5,7 @@ import { api, asUiError, type Language, type Prefs, type ProviderInfo, type Tran
 import { Copy, PanelTopOpen } from "lucide-react";
 import { LanguagePicker } from "./components/LanguagePicker";
 import { LogoMark } from "./components/Logo";
+import { WordDetails } from "./components/WordDetails";
 import { isEscapeTaken } from "./shortcuts";
 
 /** Compact translation of the current selection. Keyboard: Esc close, Enter copy+close, Ctrl+O open. */
@@ -15,6 +16,7 @@ export default function Popup() {
   const [text, setText] = useState("");
   const [draft, setDraft] = useState("");
   const [result, setResult] = useState<Translation | null>(null);
+  const [resultFor, setResultFor] = useState("");
   const [error, setError] = useState<UiError | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
@@ -60,7 +62,7 @@ export default function Popup() {
     setBusy(true);
     api
       .translate(text, prefs.source, prefs.target, prefs.provider)
-      .then((t) => id === seq.current && (setResult(t), setError(null)))
+      .then((t) => id === seq.current && (setResult(t), setResultFor(text), setError(null)))
       .catch((e) => id === seq.current && setError(asUiError(e)))
       .finally(() => id === seq.current && setBusy(false));
   }, [text, prefs]);
@@ -134,7 +136,19 @@ export default function Popup() {
                 ))}
               </p>
             ) : (
-              <p className="popup-translation">{result?.text ?? "Translating…"}</p>
+              <>
+                <p className="popup-translation">{result?.text ?? "Translating…"}</p>
+                {result && prefs && (
+                  <WordDetails
+                    compact
+                    text={resultFor}
+                    source={from ?? null}
+                    target={prefs.target}
+                    result={result}
+                    onUseCorrection={setText}
+                  />
+                )}
+              </>
             )}
           </div>
         </>

@@ -115,7 +115,7 @@ mod tests {
         async fn translate(&self, _: &TranslateRequest) -> Result<Translation, ProviderError> {
             tokio::time::sleep(self.delay).await;
             match self.result {
-                Ok(text) => Ok(Translation { text: text.into(), detected_source: None, provider: self.id.into() }),
+                Ok(text) => Ok(Translation { text: text.into(), detected_source: None, provider: self.id.into(), details: None }),
                 Err(status) => Err(ProviderError::Http { status, body: String::new() }),
             }
         }

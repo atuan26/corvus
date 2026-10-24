@@ -153,6 +153,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::translate,
+            commands::ipa,
+            commands::speak,
             commands::providers,
             commands::languages,
             commands::app_info,
