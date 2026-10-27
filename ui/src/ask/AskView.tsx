@@ -82,8 +82,11 @@ export default function AskView({ active, onOpenSettings, initialText }: Props) 
     }
   }, [initialText]);
 
-  // Keep the newest text in view while it streams.
-  useEffect(() => endRef.current?.scrollIntoView({ block: "end" }), [turns]);
+  // Keep the newest text in view while it streams. Braces matter: Chromium's scrollIntoView
+  // returns a Promise, which React would take as the cleanup function and crash on unmount.
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "end" });
+  }, [turns]);
 
   const current = assistants.find((a) => a.id === assistantId) ?? null;
   const ready = !!current && !current.problem;

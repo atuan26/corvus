@@ -1647,3 +1647,37 @@ code {
 .settings-panel[data-focus-visible] {
   outline: none;
 }
+
+/* Error boundary fallback */
+
+.crash {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 24px;
+  background: var(--surface);
+}
+
+.crash h1 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.crash p {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+.crash pre {
+  max-width: 100%;
+  margin: 0;
+  padding: 8px 12px;
+  overflow: auto;
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+  color: var(--danger);
+  white-space: pre-wrap;
+}
