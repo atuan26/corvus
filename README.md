@@ -8,6 +8,35 @@ A keyboard-first desktop translator and AI assistant, built as a modern replacem
 - **CLI** (`crates/corvus-cli`): `corvus translate -t vi "Hello"`, or pipe text via stdin.
 - **Desktop app** (`src-tauri` + `ui`): Tauri 2, React 19, React Aria Components.
 
+## Install
+
+Download the package for your system from the
+[Releases page](https://github.com/atuan26/corvus/releases).
+
+| System | File | How |
+|---|---|---|
+| Windows 10/11 | `Corvus_<version>_x64-setup.exe` | Run it. Windows warns because the installer isn't signed yet: choose **More info → Run anyway**. The `.msi` is for managed (IT) installs. |
+| Debian, Ubuntu | `Corvus_<version>_amd64.deb` | `sudo apt install ./Corvus_<version>_amd64.deb` |
+| Fedora, openSUSE | `Corvus-<version>-1.x86_64.rpm` | `sudo dnf install ./Corvus-<version>-1.x86_64.rpm` |
+| Other Linux | `Corvus_<version>_amd64.AppImage` | `chmod +x Corvus_*.AppImage`, then run it |
+| macOS | `Corvus_<version>_universal.dmg` | Open it and drag Corvus to Applications. The app isn't notarized yet: the first time, right-click it and choose **Open**. |
+
+The Windows installer can install for just you (no admin rights) or for all users, and its last
+page offers a desktop shortcut and **Start Corvus when I sign in**. Uninstall from Windows'
+*Installed apps*.
+
+Optional extras:
+
+- **Screen text (OCR)** needs [Tesseract](#screen-text-ocr) and its language data.
+- **Listening to pronunciations** on Linux needs PulseAudio or PipeWire (with `pipewire-pulse`),
+  which desktop distributions already run.
+- On Wayland desktops global shortcuts don't work; [bind the commands](#desktops-without-global-hotkeys-wayland)
+  in your desktop's settings instead.
+
+Corvus starts in the tray. Its settings are in `~/.config/corvus/config.toml` on Linux,
+`%APPDATA%\corvus\config.toml` on Windows, and
+`~/Library/Application Support/corvus/config.toml` on macOS.
+
 ## Screen text (OCR)
 
 **Ctrl+Alt+O** freezes the screen under the mouse and lets you choose an area: drag over it, or
@@ -124,30 +153,74 @@ corvus-app --ocr-copy
 corvus-app --hidden          # start in the tray
 ```
 
-## Development
+## Building from source
+
+### Requirements
+
+- [Rust](https://rustup.rs) (stable) and [Node.js](https://nodejs.org) 24 with
+  [pnpm](https://pnpm.io) 11.
+- **Linux** system libraries:
+  - Debian/Ubuntu: `sudo apt install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev libdbus-1-dev patchelf`
+  - Arch: `sudo pacman -S webkit2gtk-4.1 libayatana-appindicator librsvg alsa-lib`
+  - Fedora: `sudo dnf install webkit2gtk4.1-devel libappindicator-gtk3-devel librsvg2-devel alsa-lib-devel dbus-devel`
+- **Windows**: the "Desktop development with C++" workload from Visual Studio Build Tools.
+  WebView2 is already part of Windows 10/11.
+- **macOS**: Xcode Command Line Tools (`xcode-select --install`).
+
+### Run and test
 
 ```sh
 pnpm install
-pnpm tauri dev        # desktop app with hot reload
-cargo test --workspace
+pnpm tauri dev                                  # desktop app with hot reload
+cargo test --workspace                          # Rust tests (OCR tests skip without Tesseract)
+cargo clippy --workspace --all-targets
+pnpm build                                      # type-check and build the UI
 cargo run -p corvus-cli -- translate -t vi "Hello"
-pnpm tauri build      # installers in target/release/bundle
 ```
 
-Linux build deps: `webkit2gtk-4.1`, `libayatana-appindicator`, `librsvg`.
+`pnpm tauri dev` rebuilds and restarts the app when Rust code changes; UI changes reload in
+place.
 
-Windows builds come from the **Windows build** GitHub workflow (pull requests, `v*` tags, or run
-it by hand). Its `corvus-windows` artifact holds the setup `.exe`, the `.msi`, and a bare
-`corvus-app.exe` that runs without installing. Windows 10/11 already include WebView2.
-
-The setup `.exe` can also be cross-built on Linux with a Rust toolchain that has the
-`x86_64-pc-windows-gnu` target, MinGW (`mingw-w64-gcc`) and `makensis` on `PATH`:
+### Packages
 
 ```sh
+pnpm tauri build                                # every package format this system can make
+pnpm tauri build --bundles deb,rpm,appimage     # Linux
+pnpm tauri build --bundles nsis,msi             # Windows
+pnpm tauri build --target universal-apple-darwin --bundles dmg   # macOS (Intel + Apple Silicon)
+```
+
+Packages land in `target/release/bundle/` (or `target/<target>/release/bundle/` with
+`--target`). The CLI is a separate binary: `cargo build --release -p corvus-cli` gives
+`target/release/corvus`.
+
+The Windows setup `.exe` can also be cross-built on Linux with the `x86_64-pc-windows-gnu` Rust
+target, MinGW (`mingw-w64-gcc`) and `makensis` on `PATH`:
+
+```sh
+rustup target add x86_64-pc-windows-gnu
 pnpm tauri build --target x86_64-pc-windows-gnu --bundles nsis
 ```
 
-The installer offers per-user or all-users install, a Start menu folder, a desktop shortcut, and
-"Start Corvus when I sign in". That last one is the same setting as Settings → General, which
-works on every platform. The finish page is added in `src-tauri/windows/installer.nsi`, a copy
-of Tauri's template; re-copy it when upgrading `@tauri-apps/cli`.
+The `.msi` needs WiX, which only runs on Windows.
+
+The installer's finish page ("Start Corvus when I sign in") comes from
+`src-tauri/windows/installer.nsi`, a copy of Tauri's NSIS template with marked additions;
+re-copy it from the new `tauri-cli` version and re-apply those parts when upgrading
+`@tauri-apps/cli`.
+
+### Releases
+
+The **Build** workflow (`.github/workflows/build.yml`) tests on Linux and builds the packages for
+Linux, Windows and macOS on every pull request; download them from the run's artifacts. To
+release:
+
+1. Set the version in `Cargo.toml`, `package.json` and `src-tauri/tauri.conf.json`, and add the
+   changes to `CHANGELOG.md`.
+2. Tag and push: `git tag v0.1.0 && git push origin v0.1.0`.
+3. The workflow attaches the packages to a **draft** release; check it and publish it.
+
+## License
+
+Licensed under either of [Apache License 2.0](LICENSE-APACHE) or [MIT](LICENSE-MIT), at your
+option.
