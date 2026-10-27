@@ -175,6 +175,8 @@ pub fn run() {
             settings::resume_shortcuts,
             settings::get_autostart,
             settings::set_autostart,
+            settings::get_appearance,
+            settings::set_appearance,
             commands::paste_text,
             ask::list_assistants,
             ask::ask_start,

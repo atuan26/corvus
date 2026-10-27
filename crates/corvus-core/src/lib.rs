@@ -11,7 +11,7 @@ pub mod router;
 pub mod secrets;
 pub mod speech;
 
-pub use config::{AssistantConfig, AssistantKind, Config, KeySource, ProviderConfig, ProviderKind, Shortcuts};
+pub use config::{Appearance, AssistantConfig, AssistantKind, Config, KeySource, ProviderConfig, ProviderKind, Shortcuts};
 pub use dictionary::{Details, Ipa};
 pub use error::ProviderError;
 pub use provider::{ProviderInfo, TranslateRequest, Translation, Translator};

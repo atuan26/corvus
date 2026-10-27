@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use corvus_core::{
-    AssistantConfig, Config, KeySource, Keychain, ProviderConfig, Router, SecretStore, Shortcuts, TranslateRequest,
+    Appearance, AssistantConfig, Config, KeySource, Keychain, ProviderConfig, Router, SecretStore, Shortcuts, TranslateRequest,
     Translation,
 };
 use serde::{Deserialize, Serialize};
@@ -162,6 +162,25 @@ fn write_config(state: &AppState, config: &Config) -> Result<(), String> {
     config.save(path)
 }
 
+#[tauri::command]
+pub fn get_appearance(state: State<'_, AppState>) -> Appearance {
+    state.config().appearance
+}
+
+/// Save the colors and tell every window, so open popups restyle too.
+#[tauri::command]
+pub fn set_appearance(app: AppHandle, appearance: Appearance) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let mut config = state.config.write().unwrap();
+    if config.appearance != appearance {
+        let updated = Config { appearance: appearance.clone(), ..config.clone() };
+        write_config(&state, &updated)?;
+        *config = updated;
+    }
+    drop(config);
+    app.emit("appearance-changed", appearance).map_err(|e| e.to_string())
+}
+
 /// Validate and persist. On failure returns every problem so the UI can show them together.
 #[tauri::command]
 pub async fn save_settings(app: AppHandle, input: SettingsInput) -> Result<Vec<String>, Vec<String>> {
@@ -192,6 +211,8 @@ pub async fn save_settings(app: AppHandle, input: SettingsInput) -> Result<Vec<S
         timeout_secs: input.timeout_secs,
         shortcuts: input.shortcuts,
         providers,
+        // Changed on its own, applied immediately; see `set_appearance`.
+        appearance: old.appearance,
     };
     let mut errors = config.validate();
     errors.extend(shortcuts::validate(&config.shortcuts));

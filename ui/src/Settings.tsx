@@ -14,12 +14,15 @@ import {
   ListBoxItem,
   NumberField,
   Popover,
+  Radio,
+  RadioGroup,
   Select,
   SelectValue,
   Switch,
 } from "react-aria-components";
 import {
   api,
+  type Appearance,
   type AssistantKind,
   type AssistantView,
   type Language,
@@ -28,6 +31,7 @@ import {
   type ProviderView,
   type SettingsInput,
   type SettingsView,
+  type ThemeMode,
 } from "./api";
 import { LanguagePicker } from "./components/LanguagePicker";
 import { AssistantCard } from "./components/AssistantCard";
@@ -35,10 +39,12 @@ import { OcrSettings } from "./components/OcrSettings";
 import { ProviderCard } from "./components/ProviderCard";
 import { ShortcutRecorder } from "./components/ShortcutRecorder";
 import { isEscapeTaken } from "./shortcuts";
-import { Bot, Info, Keyboard, Languages, ScanText, SlidersHorizontal } from "lucide-react";
+import { applyAppearance, isDark, THEMES } from "./theme";
+import { Bot, Info, Keyboard, Languages, Monitor, Moon, Palette, ScanText, SlidersHorizontal, Sun } from "lucide-react";
 
 const SECTIONS = [
   { id: "general", label: "General", Icon: SlidersHorizontal },
+  { id: "appearance", label: "Appearance", Icon: Palette },
   { id: "translation", label: "Translation", Icon: Languages },
   { id: "assistants", label: "AI assistants", Icon: Bot },
   { id: "ocr", label: "Screen text", Icon: ScanText },
@@ -46,6 +52,11 @@ const SECTIONS = [
   { id: "about", label: "About", Icon: Info },
 ];
 
+const MODES: { id: ThemeMode; label: string; Icon: typeof Sun }[] = [
+  { id: "system", label: "System", Icon: Monitor },
+  { id: "light", label: "Light", Icon: Sun },
+  { id: "dark", label: "Dark", Icon: Moon },
+];
 
 interface Preset {
   id: string;
@@ -144,6 +155,21 @@ export default function Settings({ languages, onClose }: Props) {
   // null until known, or when this system can't report it.
   const [autostart, setAutostart] = useState<boolean | null>(null);
   useEffect(() => void api.getAutostart().then(setAutostart).catch(() => {}), []);
+  const [appearance, setAppearance] = useState<Appearance | null>(null);
+  useEffect(() => void api.getAppearance().then(setAppearance).catch(() => {}), []);
+  const changeAppearance = (patch: Partial<Appearance>) => {
+    if (!appearance) return;
+    const next = { ...appearance, ...patch };
+    const previous = appearance;
+    // Restyle at once; the backend then saves it and restyles the other windows.
+    setAppearance(next);
+    applyAppearance(next);
+    api.setAppearance(next).catch((e) => {
+      setAppearance(previous);
+      applyAppearance(previous);
+      setErrors([`Could not save the appearance: ${String(e)}`]);
+    });
+  };
 
   const load = useCallback(async () => {
     const s = await api.getSettings();
@@ -374,6 +400,50 @@ export default function Settings({ languages, onClose }: Props) {
             </Switch>
             <span className="setting-hint">Opens in the tray, ready for the shortcuts. Applies immediately.</span>
           </div>
+        </TabPanel>
+        <TabPanel id="appearance" className="settings-panel">
+          <h2 className="settings-title">Appearance</h2>
+          <p className="setting-hint">Applies immediately to every Corvus window.</p>
+          {appearance && (
+            <>
+              <RadioGroup
+                className="setting-row"
+                orientation="horizontal"
+                value={appearance.mode}
+                onChange={(mode) => changeAppearance({ mode: mode as ThemeMode })}
+              >
+                <Label className="setting-label">Mode</Label>
+                <div className="segmented">
+                  {MODES.map(({ id, label, Icon }) => (
+                    <Radio key={id} value={id} className="segment">
+                      <Icon aria-hidden /> {label}
+                    </Radio>
+                  ))}
+                </div>
+              </RadioGroup>
+              <RadioGroup
+                className="setting-row"
+                value={appearance.theme}
+                onChange={(theme) => changeAppearance({ theme })}
+              >
+                <Label className="setting-label">Theme</Label>
+                <div className="theme-grid">
+                  {THEMES.map((t) => {
+                    const [bg, accent, second] = isDark(appearance) ? t.dark : t.light;
+                    return (
+                      <Radio key={t.id} value={t.id} className="theme-card">
+                        <span className="theme-preview" style={{ background: bg }} aria-hidden>
+                          <span style={{ background: accent }} />
+                          <span style={{ background: second }} />
+                        </span>
+                        {t.label}
+                      </Radio>
+                    );
+                  })}
+                </div>
+              </RadioGroup>
+            </>
+          )}
         </TabPanel>
         <TabPanel id="translation" className="settings-panel">
           <h2 className="settings-title">Translation services</h2>

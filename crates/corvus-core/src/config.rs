@@ -23,6 +23,31 @@ pub struct Config {
     pub assistants: Vec<AssistantConfig>,
     /// Text recognition for screen-area translation.
     pub ocr: crate::ocr::OcrConfig,
+    /// Colors of the desktop app.
+    pub appearance: Appearance,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct Appearance {
+    pub mode: ThemeMode,
+    /// Color theme id, as listed by the UI. Unknown ids fall back to the default there.
+    pub theme: String,
+}
+
+impl Default for Appearance {
+    fn default() -> Self {
+        Self { mode: ThemeMode::System, theme: "raven".into() }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ThemeMode {
+    /// Follow the desktop's light or dark preference.
+    System,
+    Light,
+    Dark,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -166,6 +191,7 @@ impl Default for Config {
             timeout_secs: 15,
             shortcuts: Shortcuts::default(),
             ocr: Default::default(),
+            appearance: Appearance::default(),
             assistants: vec![
                 AssistantConfig::new("chatgpt", AssistantKind::Chatgpt),
                 AssistantConfig {

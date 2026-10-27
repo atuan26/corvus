@@ -185,6 +185,13 @@ export interface SettingsView {
   keychain_error: string | null;
 }
 
+export type ThemeMode = "system" | "light" | "dark";
+
+export interface Appearance {
+  mode: ThemeMode;
+  theme: string;
+}
+
 export interface SettingsInput {
   default_source: string;
   default_target: string;
@@ -216,6 +223,9 @@ export const api = {
   setApiKey: (providerId: string, key: string | null, store: KeyStore) =>
     invoke<KeySource>("set_api_key", { providerId, key, store }),
   testProvider: (provider: ProviderConfig) => invoke<Translation>("test_provider", { provider }),
+  getAppearance: () => invoke<Appearance>("get_appearance"),
+  /** Saves and restyles every open window. */
+  setAppearance: (appearance: Appearance) => invoke<void>("set_appearance", { appearance }),
   getAutostart: () => invoke<boolean>("get_autostart"),
   /** Resolves with the state in effect afterwards. */
   setAutostart: (enabled: boolean) => invoke<boolean>("set_autostart", { enabled }),
