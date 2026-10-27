@@ -139,3 +139,15 @@ Linux build deps: `webkit2gtk-4.1`, `libayatana-appindicator`, `librsvg`.
 Windows builds come from the **Windows build** GitHub workflow (pull requests, `v*` tags, or run
 it by hand). Its `corvus-windows` artifact holds the setup `.exe`, the `.msi`, and a bare
 `corvus-app.exe` that runs without installing. Windows 10/11 already include WebView2.
+
+The setup `.exe` can also be cross-built on Linux with a Rust toolchain that has the
+`x86_64-pc-windows-gnu` target, MinGW (`mingw-w64-gcc`) and `makensis` on `PATH`:
+
+```sh
+pnpm tauri build --target x86_64-pc-windows-gnu --bundles nsis
+```
+
+The installer offers per-user or all-users install, a Start menu folder, a desktop shortcut, and
+"Start Corvus when I sign in". That last one is the same setting as Settings → General, which
+works on every platform. The finish page is added in `src-tauri/windows/installer.nsi`, a copy
+of Tauri's template; re-copy it when upgrading `@tauri-apps/cli`.

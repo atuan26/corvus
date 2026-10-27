@@ -10,6 +10,7 @@ use corvus_core::{
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_global_shortcut::Shortcut;
 
 use crate::{shortcuts, tray, AppState};
@@ -285,4 +286,26 @@ pub fn resume_shortcuts(app: AppHandle) {
     let keys = app.state::<AppState>().config().shortcuts;
     let warnings = shortcuts::apply(&app, &keys);
     set_warnings(&app, None, Some(warnings));
+}
+
+/// Whether Corvus starts (hidden, in the tray) when the user signs in. An OS setting, so it is
+/// read and changed directly rather than through Save.
+#[tauri::command]
+pub async fn get_autostart(app: AppHandle) -> Result<bool, String> {
+    blocking(move || app.autolaunch().is_enabled().map_err(|e| e.to_string())).await?
+}
+
+/// Returns the state actually in effect afterwards.
+#[tauri::command]
+pub async fn set_autostart(app: AppHandle, enabled: bool) -> Result<bool, String> {
+    blocking(move || {
+        let launcher = app.autolaunch();
+        let current = launcher.is_enabled().map_err(|e| e.to_string())?;
+        // Disabling an entry that doesn't exist is an error on some platforms.
+        if enabled != current {
+            if enabled { launcher.enable() } else { launcher.disable() }.map_err(|e| e.to_string())?;
+        }
+        launcher.is_enabled().map_err(|e| e.to_string())
+    })
+    .await?
 }

@@ -16,6 +16,7 @@ import {
   Popover,
   Select,
   SelectValue,
+  Switch,
 } from "react-aria-components";
 import {
   api,
@@ -140,6 +141,9 @@ export default function Settings({ languages, onClose }: Props) {
   const [section, setSection] = useState("general");
   const [version, setVersion] = useState("");
   useEffect(() => void getVersion().then(setVersion).catch(() => {}), []);
+  // null until known, or when this system can't report it.
+  const [autostart, setAutostart] = useState<boolean | null>(null);
+  useEffect(() => void api.getAutostart().then(setAutostart).catch(() => {}), []);
 
   const load = useCallback(async () => {
     const s = await api.getSettings();
@@ -349,6 +353,26 @@ export default function Settings({ languages, onClose }: Props) {
                 </Button>
               </Group>
             </NumberField>
+          </div>
+          <div className="setting-row">
+            <Switch
+              className="switch"
+              isSelected={autostart ?? false}
+              isDisabled={autostart === null}
+              onChange={(enabled) =>
+                void api
+                  .setAutostart(enabled)
+                  .then((now) => {
+                    setAutostart(now);
+                    setStatus(now ? "Corvus will start when you sign in" : "Corvus won't start when you sign in");
+                  })
+                  .catch((e) => setErrors([`Could not change startup: ${String(e)}`]))
+              }
+            >
+              <span className="switch-track" aria-hidden />
+              Start Corvus when I sign in
+            </Switch>
+            <span className="setting-hint">Opens in the tray, ready for the shortcuts. Applies immediately.</span>
           </div>
         </TabPanel>
         <TabPanel id="translation" className="settings-panel">

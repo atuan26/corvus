@@ -216,6 +216,9 @@ export const api = {
   setApiKey: (providerId: string, key: string | null, store: KeyStore) =>
     invoke<KeySource>("set_api_key", { providerId, key, store }),
   testProvider: (provider: ProviderConfig) => invoke<Translation>("test_provider", { provider }),
+  getAutostart: () => invoke<boolean>("get_autostart"),
+  /** Resolves with the state in effect afterwards. */
+  setAutostart: (enabled: boolean) => invoke<boolean>("set_autostart", { enabled }),
   validateShortcut: (keys: string) => invoke<void>("validate_shortcut", { keys }),
   pauseShortcuts: () => invoke<void>("pause_shortcuts"),
   resumeShortcuts: () => invoke<void>("resume_shortcuts"),

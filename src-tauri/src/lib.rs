@@ -118,6 +118,8 @@ pub fn run() {
         .manage(ask::AskState::new())
         .manage(ocr::SnipState::default())
         .plugin(tauri_plugin_opener::init())
+        // Sign-in launches go straight to the tray.
+        .plugin(tauri_plugin_autostart::Builder::new().arg("--hidden").build())
         .setup(|app| {
             tray::create(app.handle())?;
             let shortcut_warnings = match shortcuts::init(app) {
@@ -170,6 +172,8 @@ pub fn run() {
             settings::validate_shortcut,
             settings::pause_shortcuts,
             settings::resume_shortcuts,
+            settings::get_autostart,
+            settings::set_autostart,
             commands::paste_text,
             ask::list_assistants,
             ask::ask_start,
