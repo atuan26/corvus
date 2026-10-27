@@ -1,0 +1,98 @@
+name: Build
+
+# Pull requests and manual runs build every platform and upload the packages as artifacts.
+# A tag like v0.1.0 also creates a draft GitHub release with the packages attached.
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  LINUX_DEPS: >-
+    libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev
+    libdbus-1-dev patchelf
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y $LINUX_DEPS
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+      # Type-checks and builds the UI, which the Tauri crate embeds.
+      - run: pnpm build
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 22.04 so the .deb and AppImage run on older glibc too.
+          - os: ubuntu-22.04
+            args: --bundles deb,rpm,appimage
+            rust-targets: ""
+          - os: windows-latest
+            args: --bundles nsis,msi
+            rust-targets: ""
+          - os: macos-latest
+            args: --target universal-apple-darwin --bundles dmg
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y $LINUX_DEPS
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+
+      # Builds the UI (beforeBuildCommand), the release binary and the packages. On a tag it
+      # also creates (or adds to) the draft release.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ${{ matrix.args }}
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: Corvus ${{ github.ref_name }}
+          releaseBody: See CHANGELOG.md for what changed, and the README for installing.
+          releaseDraft: true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: corvus-${{ runner.os }}
+          path: |
+            target/**/release/bundle/deb/*.deb
+            target/**/release/bundle/rpm/*.rpm
+            target/**/release/bundle/appimage/*.AppImage
+            target/**/release/bundle/nsis/*.exe
+            target/**/release/bundle/msi/*.msi
+            target/**/release/bundle/dmg/*.dmg
+          if-no-files-found: error
