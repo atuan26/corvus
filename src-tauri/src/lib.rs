@@ -1,5 +1,6 @@
 mod actions;
 mod ask;
+mod audio;
 mod capture;
 mod commands;
 mod ocr;

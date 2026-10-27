@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "react-aria-components";
 import { Volume2 } from "lucide-react";
 import { api, type Ipa, type Translation } from "../api";
@@ -28,7 +28,6 @@ interface Props {
 export function WordDetails({ text, source, target, result, compact, onUseCorrection }: Props) {
   const [ipa, setIpa] = useState<Ipa[]>([]);
   const [expanded, setExpanded] = useState(false);
-  const audio = useRef<HTMLAudioElement | null>(null);
   const details = result.details;
 
   useEffect(() => {
@@ -46,21 +45,9 @@ export function WordDetails({ text, source, target, result, compact, onUseCorrec
     };
   }, [text, source]);
 
-  useEffect(() => () => audio.current?.pause(), []);
-
-  const speak = useCallback(async (words: string, lang: string) => {
-    audio.current?.pause();
-    try {
-      const bytes = await api.speak(words, lang);
-      const url = URL.createObjectURL(new Blob([bytes], { type: "audio/mpeg" }));
-      const player = new Audio(url);
-      player.onended = () => URL.revokeObjectURL(url);
-      audio.current = player;
-      await player.play();
-    } catch {
-      // Nothing useful to show; the button simply does nothing.
-    }
-  }, []);
+  const speak = (words: string, lang: string) =>
+    // Nothing useful to show on failure; the button simply does nothing.
+    api.speak(words, lang).catch(() => {});
 
   const corrected =
     details?.corrected && details.corrected.toLowerCase() !== text.trim().toLowerCase() ? details.corrected : null;

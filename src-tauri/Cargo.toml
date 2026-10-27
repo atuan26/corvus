@@ -26,11 +26,15 @@ tauri-plugin-opener = "2"
 tauri-plugin-autostart = "2"
 corvus-ai.workspace = true
 image = { version = "0.25.10", default-features = false, features = ["png"] }
+rodio = { version = "0.23.0", default-features = false, features = ["playback", "mp3"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 ashpd = { version = "0.13.13", default-features = false, features = ["tokio", "screenshot"] }
 gtk = "0.18"
 x11rb = "0.13"
+# rodio's audio layer; talks to PulseAudio (or PipeWire's Pulse server) instead of raw ALSA,
+# which without alsa-plugins can't reach the sound server.
+cpal = { version = "0.18.2", features = ["pulseaudio"] }
 
 [target.'cfg(not(target_os = "linux"))'.dependencies]
 xcap = "0.9.8"

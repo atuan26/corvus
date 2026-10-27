@@ -44,11 +44,11 @@ pub async fn ipa(word: String, lang: String) -> Result<Vec<Ipa>, String> {
     WIKTIONARY.ipa(&word, &lang).await.map_err(|e| e.to_string())
 }
 
-/// MP3 of `text` read aloud, sent as raw bytes rather than a JSON number array.
+/// Reads `text` aloud through the system's audio output.
 #[tauri::command]
-pub async fn speak(text: String, lang: String) -> Result<tauri::ipc::Response, String> {
-    let audio = SPEECH.speak(&text, &lang).await.map_err(|e| e.to_string())?;
-    Ok(tauri::ipc::Response::new(audio))
+pub async fn speak(text: String, lang: String) -> Result<(), String> {
+    let mp3 = SPEECH.speak(&text, &lang).await.map_err(|e| e.to_string())?;
+    crate::audio::play(mp3).await
 }
 
 #[tauri::command]

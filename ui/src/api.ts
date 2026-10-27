@@ -199,8 +199,8 @@ export const api = {
   translate: (text: string, source: string, target: string, provider: string | null) =>
     invoke<Translation>("translate", { request: { text, source, target }, provider }),
   ipa: (word: string, lang: string) => invoke<Ipa[]>("ipa", { word, lang }),
-  /** MP3 bytes of `text` read aloud. */
-  speak: (text: string, lang: string) => invoke<ArrayBuffer>("speak", { text, lang }),
+  /** Reads `text` aloud; the backend plays it, since the Linux webview may lack an MP3 decoder. */
+  speak: (text: string, lang: string) => invoke<void>("speak", { text, lang }),
   providers: () => invoke<ProviderInfo[]>("providers"),
   languages: () => invoke<Language[]>("languages"),
   appInfo: () => invoke<AppInfo>("app_info"),
