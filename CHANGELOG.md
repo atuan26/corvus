@@ -13,7 +13,7 @@ First release.
 - Translate the selected text in any app in a popup (Ctrl+Alt+E), or replace it with its
   translation (Ctrl+Alt+R).
 - Screen text (OCR): pick a screen area to translate (Ctrl+Alt+O) or copy (Ctrl+Alt+I) its text,
-  recognized locally with Tesseract.
+  recognized locally with Tesseract. Settings installs Tesseract and downloads OCR languages.
 
 ### Ask AI
 
@@ -37,7 +37,6 @@ First release.
 
 - Google translation and pronunciation audio use unofficial free endpoints that can be
   rate-limited or change; add another provider as a fallback.
-- OCR needs Tesseract installed separately.
 - Global shortcuts don't work on Wayland; bind the `corvus-app --…` commands in your desktop's
   settings instead.
 - The Windows installer and macOS app aren't signed yet, so the system warns on first run.

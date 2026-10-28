@@ -8,6 +8,7 @@ mod popup;
 mod selection;
 mod settings;
 mod shortcuts;
+mod tesseract;
 mod tray;
 
 use std::path::PathBuf;
@@ -193,7 +194,11 @@ pub fn run() {
             ocr::snip_image,
             ocr::snip_finish,
             ocr::snip_cancel,
-            ocr::ocr_languages,
+            tesseract::ocr_languages,
+            tesseract::ocr_download_language,
+            tesseract::ocr_remove_language,
+            tesseract::tesseract_status,
+            tesseract::tesseract_install,
             ocr::ocr_start,
         ])
         .run(tauri::generate_context!())

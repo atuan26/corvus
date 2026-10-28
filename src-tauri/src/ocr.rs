@@ -225,13 +225,6 @@ fn show_result(app: &AppHandle, mode: Mode, text: String, error: Option<String>)
     }
 }
 
-/// Languages Tesseract can read here, for Settings.
-#[tauri::command]
-pub async fn ocr_languages(app: AppHandle) -> Result<Vec<String>, String> {
-    let ocr = app.state::<AppState>().config().ocr;
-    tauri::async_runtime::spawn_blocking(move || ocr.installed_languages()).await.map_err(|e| e.to_string())?
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

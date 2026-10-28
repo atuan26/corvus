@@ -27,7 +27,8 @@ page offers a desktop shortcut and **Start Corvus when I sign in**. Uninstall fr
 
 Optional extras:
 
-- **Screen text (OCR)** needs [Tesseract](#screen-text-ocr) and its language data.
+- **Screen text (OCR)** needs [Tesseract](#screen-text-ocr); Settings → Screen text installs it
+  and downloads languages.
 - **Listening to pronunciations** on Linux needs PulseAudio or PipeWire (with `pipewire-pulse`),
   which desktop distributions already run.
 - On Wayland desktops global shortcuts don't work; [bind the commands](#desktops-without-global-hotkeys-wayland)
@@ -48,13 +49,21 @@ window, keeping its line breaks.
 Inside the app, the scan button in the Translate and Ask boxes does the same and puts the text
 straight into that box.
 
-Requires the `tesseract` package plus language data, e.g. `tesseract-data-vie` for Vietnamese;
-choose languages in Settings → Screen text. From the command line: `corvus ocr shot.png
-[--translate]`.
+Recognition uses [Tesseract](https://github.com/tesseract-ocr/tesseract). **Settings → Screen
+text** installs it if it's missing:
 
-On Windows, install Tesseract with the [UB Mannheim installer](https://github.com/UB-Mannheim/tesseract/wiki)
-and tick the languages you need; Corvus finds it in `C:\Program Files\Tesseract-OCR`, or set its
-path in the config (`[ocr] tesseract = "..."`).
+- **Windows**: downloads the official [UB Mannheim installer](https://github.com/UB-Mannheim/tesseract/wiki),
+  checks it against a pinned SHA-256, and opens it (Windows asks for permission).
+- **macOS**: runs `brew install tesseract` when [Homebrew](https://brew.sh) is installed.
+- **Linux**: runs the package manager (apt, dnf, pacman or zypper) through `pkexec`, which asks
+  for your password; without `pkexec` it shows the command to run.
+
+Languages are added in the same place: pick one under **Add a language** and Corvus downloads its
+data from Tesseract's official `tessdata_fast` set into `~/.local/share/corvus/tessdata`
+(`%APPDATA%\corvus\tessdata` on Windows), with no admin rights needed. Languages installed with
+the system's packages are used too. From the command line: `corvus ocr shot.png [--translate]`.
+
+A Tesseract outside the usual places can be set in the config (`[ocr] tesseract = "..."`).
 
 ## Ask AI
 

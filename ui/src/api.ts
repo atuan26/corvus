@@ -94,6 +94,25 @@ export interface OcrConfig {
   tesseract?: string | null;
 }
 
+export interface OcrLanguage {
+  code: string;
+  name: string;
+  /** Usable now, from the system's Tesseract data or Corvus's own. */
+  installed: boolean;
+  /** Downloaded by Corvus, so it can be removed here. */
+  downloaded: boolean;
+}
+
+export type InstallMethod =
+  | { kind: "windows-installer" }
+  | { kind: "command"; program: string; args: string[] }
+  | { kind: "manual"; command: string | null; url: string };
+
+export interface TesseractStatus {
+  installed: boolean;
+  install: InstallMethod;
+}
+
 export type AssistantKind = "chatgpt" | "anthropic" | "openai" | "openai-compatible";
 
 export interface AssistantConfig {
@@ -245,7 +264,12 @@ export const api = {
   chatgptModels: () => invoke<ModelEntry[]>("chatgpt_models"),
   setAssistantKey: (assistantId: string, key: string | null) => invoke<void>("set_assistant_key", { assistantId, key }),
   openUrl: (url: string) => invoke<void>("open_url", { url }),
-  ocrLanguages: () => invoke<string[]>("ocr_languages"),
+  ocrLanguages: () => invoke<OcrLanguage[]>("ocr_languages"),
+  ocrDownloadLanguage: (code: string) => invoke<void>("ocr_download_language", { code }),
+  ocrRemoveLanguage: (code: string) => invoke<void>("ocr_remove_language", { code }),
+  tesseractStatus: () => invoke<TesseractStatus>("tesseract_status"),
+  /** Resolves `true` when Tesseract is ready, `false` when an installer window opened. */
+  tesseractInstall: () => invoke<boolean>("tesseract_install"),
   /** Pick a screen area; its text goes into the Translate or Ask input. */
   ocrStart: (tab: "translate" | "ask") => invoke<void>("ocr_start", { tab }),
 };

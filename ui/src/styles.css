@@ -1692,6 +1692,40 @@ code {
   text-align: center;
 }
 
+.ocr-install {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ocr-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ocr-command {
+  align-self: flex-start;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  user-select: all;
+}
+
+.ocr-lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ocr-lang .icon-btn {
+  width: 24px;
+  height: 24px;
+}
+
+.ocr-add {
+  margin-top: 14px;
+}
+
 .checkbox-group {
   display: flex;
   flex-wrap: wrap;
